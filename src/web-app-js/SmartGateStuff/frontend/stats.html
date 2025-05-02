@@ -1,0 +1,242 @@
+{% extends "layout.html" %}
+
+{% block title %}Stats{% endblock %}
+
+{% block content %}
+    <div class="main-content">
+        <section class="background">
+            <video autoplay muted loop id="backgroundVideo">
+                <source src="../static/NewFolder/bakground_video.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            <div class="overlay"></div>
+        </section>
+        {# <!-- This is where the content goes --> #}
+        <div class="table-histo-container">
+            <div class="gates-animal-table">
+                <div class="gates-table"></div>
+                <div class="animals-table"></div>
+            </div>
+            <div class="histo-stats-container">
+                <div id="animal-count-histo"></div>
+                <div class="stats-table"></div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript" src="https://unpkg.com/tabulator-tables/dist/js/tabulator.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-3.0.1.min.js" charset="utf-8"></script>
+    <script>
+        // Dummy gate data (you would fetch this from your FastAPI endpoint or WebSocket later)
+        var tableData = [
+            {gate_no: 1, gate_status: "Open", gate_no_opens: 15, gate_no_closes: 14},
+            {gate_no: 2, gate_status: "Closed", gate_no_opens: 8, gate_no_closes: 9},
+            {gate_no: 3, gate_status: "Open", gate_no_opens: 23, gate_no_closes: 22},
+        ];
+
+        var animalData = [
+            {animal_id: 1, animal_type: "Mammal", animal_name: "Tiger", is_endangered: true, is_threat: true, time_stamp: "2025-04-26 12:00:00"},
+            {animal_id: 2, animal_type: "Bird", animal_name: "Parrot", is_endangered: false, is_threat: false, time_stamp: "2025-04-26 13:00:00"},
+            {animal_id: 3, animal_type: "Reptile", animal_name: "Crocodile", is_endangered: false, is_threat: true, time_stamp: "2025-04-26 14:00:00"},
+        ];
+
+        var statsData = [
+            { label: "Total Animals", value: 150 },
+            { label: "Total Threats", value: 45 },
+            { label: "Total Endangered", value: 30 },
+            { label: "Threats & Endangered", value: 18 },
+            { label: "% Threats", value: "30%" },
+            { label: "% Endangered", value: "20%" },
+            { label: "% Both", value: "12%" },
+        ];
+
+
+        // Create Tabulator on DOM element
+        var table = new Tabulator(".gates-table", {
+            data: tableData,
+            layout: "fitData",
+            responsiveLayout: "collapse",
+            columns: [
+                {title: "Gate No", field: "gate_no", width: 180, hozAlign: "center"},
+                {title: "Status", field: "gate_status", width: 192, hozAlign: "center", formatter:"tickCross", formatterParams:{
+                    allowEmpty:true,
+                    allowTruthy:true,
+                    tickElement:"<span>🟢 Open</span>",
+                    crossElement:"<span>🔴 Closed</span>",
+                }},
+                {title: "No. of Opens", field: "gate_no_opens", width: 200, hozAlign: "center"},
+                {title: "No. of Closes", field: "gate_no_closes", width: 200, hozAlign: "center"},
+            ],
+            initialSort: [
+                {column:"gate_no", dir:"asc"}, // Sort gates by gate number
+            ],
+            rowFormatter: function(row) {
+                // Set a more subtle gradient for background (light green to deeper green)
+                row.getElement().style.background = "rgba(0, 0, 0)"; // Black with 70% opacity
+                
+                // Set the text color to white for high contrast and readability
+                row.getElement().style.color = "white"; // White text color
+                
+                // Make the text bold for better visibility
+                row.getElement().style.fontWeight = "bold"; // Bold text for emphasis
+                
+                // Use a smooth transition for background color and shadow change on hover
+                row.getElement().style.transition = "background-color 0.3s ease"; // Smooth transitions
+                
+                // Hover effect: slightly darker green for the background when mouse enters
+                row.getElement().addEventListener('mouseenter', function() {
+                    row.getElement().style.background = "#000000"; // Darker green for hover effect
+                });
+                
+                row.getElement().addEventListener('mouseleave', function() {
+                    row.getElement().style.background = "rgba(0, 0, 0)"; // Revert to original gradient
+                });
+            },
+        });
+
+        // Create Tabulator for animals table
+        var animalTable = new Tabulator(".animals-table", {
+            data: animalData,
+            layout: "fitData",
+            responsiveLayout: "collapse",
+            columns: [
+                {title: "ID", field: "animal_id", width: 100, hozAlign: "center"},
+                {title: "Type", field: "animal_type", width: 120, hozAlign: "center"},
+                {title: "Name", field: "animal_name", width: 120, hozAlign: "center"},
+                {title: "Endangered", field: "is_endangered", hozAlign: "center", formatter: "tickCross", formatterParams: {
+                    allowEmpty: true,
+                    allowTruthy: true,
+                    tickElement: "<span style='color:red;'>⚠️ Yes</span>",
+                    crossElement: "<span style='color:green;'>✅ No</span>",
+                }},
+                {title: "Threat", field: "is_threat", width: 120, hozAlign: "center", formatter: "tickCross", formatterParams: {
+                    allowEmpty: true,
+                    allowTruthy: true,
+                    tickElement: "<span style='color:orange;'>⚡ Threat</span>",
+                    crossElement: "<span style='color:green;'>✅ Safe</span>",
+                }},
+                {title: "Timestamp", field: "time_stamp", width: 200, hozAlign: "center"},
+            ],
+            initialSort: [
+                {column: "animal_id", dir: "asc"},
+            ],
+            rowFormatter: function(row) {
+                // Set a more subtle gradient for background (light green to deeper green)
+                row.getElement().style.background = "rgba(0, 0, 0)"; // Black with 70% opacity
+                
+                // Set the text color to white for high contrast and readability
+                row.getElement().style.color = "white"; // White text color
+                
+                // Make the text bold for better visibility
+                row.getElement().style.fontWeight = "bold"; // Bold text for emphasis
+                
+                // Use a smooth transition for background color and shadow change on hover
+                row.getElement().style.transition = "background-color 0.3s ease"; // Smooth transitions
+                
+                // Hover effect: slightly darker green for the background when mouse enters
+                row.getElement().addEventListener('mouseenter', function() {
+                    row.getElement().style.background = "#000000"; // Darker green for hover effect
+                });
+                
+                row.getElement().addEventListener('mouseleave', function() {
+                    row.getElement().style.background = "rgba(0, 0, 0)"; // Revert to original gradient
+                });
+            },
+        });
+
+        // Create Tabulator for stats table
+        var statsTable = new Tabulator(".stats-table", {
+            data: statsData,
+            layout: "fitData",
+            responsiveLayout: "collapse",
+            columns: [
+                {title: "Stat", field: "label", hozAlign: "left", width: 320},
+                {title: "Value", field: "value", hozAlign: "center", width: 320},
+            ],
+            rowFormatter: function(row) {
+                // Set a more subtle gradient for background (light green to deeper green)
+                row.getElement().style.background = "rgba(0, 0, 0)"; // Black with 70% opacity
+                
+                // Set the text color to white for high contrast and readability
+                row.getElement().style.color = "white"; // White text color
+                
+                // Make the text bold for better visibility
+                row.getElement().style.fontWeight = "bold"; // Bold text for emphasis
+                
+                // Use a smooth transition for background color and shadow change on hover
+                row.getElement().style.transition = "background-color 0.3s ease"; // Smooth transitions
+                
+                // Hover effect: slightly darker green for the background when mouse enters
+                row.getElement().addEventListener('mouseenter', function() {
+                    row.getElement().style.background = "#000000"; // Darker green for hover effect
+                });
+                
+                row.getElement().addEventListener('mouseleave', function() {
+                    row.getElement().style.background = "rgba(0, 0, 0)"; // Revert to original gradient
+                });
+            },
+        });
+
+        var animalTypes = animalData.map(function(animal) {
+            return animal.animal_type;
+        });
+
+        var trace = {
+            x: animalTypes,
+            type: 'histogram',
+            marker: {
+                color: '#17BECF',
+            },
+        };
+
+        var data = [trace];
+
+        var layout = {
+            title: 'Animal Type Distribution',
+            xaxis: { title: 'Animal Type' },
+            yaxis: { title: 'Count' },
+            bargap: 0.2,
+            width: 640,   // Match the CSS width
+            height: 450,  // Match the CSS height
+        };
+
+        Plotly.newPlot('animal-count-histo', data, layout);
+    </script>
+    <style>
+        .table-histo-container {
+            display: flex;
+            flex-direction: row;
+            align-items: start;
+        }
+
+        .histo-stats-container {
+            display: flex;
+            flex-direction: column;
+            align-items: start;
+        }
+
+        .gates-animal-table {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .gates-table, .animals-table {
+            margin-top: 60px;
+            margin-left: 40px;
+            height: auto;
+            display: inline-block;
+        }
+
+        #animal-count-histo{
+            margin: 60px 35px;
+            height: auto;
+            display: inline-block;
+            margin-bottom: 35px;
+        }
+
+        .stats-table {
+            margin: 0px 35px;
+            height: auto;
+            display: inline-block;
+        }
+    </style>
+{% endblock %}

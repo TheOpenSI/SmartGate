@@ -1,0 +1,49 @@
+networks:
+  sgnet:
+    driver: bridge
+
+services:
+  sgwebjs:
+    build: .
+    container_name: sgwebjs
+    ports:
+      - "8000:8000"
+    depends_on:
+      - gate-handler
+      - db
+    environment:
+      - NODE_ENV=development
+      - GATE_HANDLER_URL=http://gate-handler:3000
+      - DATABASE_URL=postgresql://admin:password@db:5432/smartgatedb
+    stdin_open: true       # Keep stdin open for interaction
+    tty: true              # Allocate a TTY for better interactive use
+    volumes:
+      - .:/web-app-js       # Mount the current directory to /web-app-js in the container
+    networks:
+      - sgnet               # Connect to the 'sgnet' network
+  
+  gate-handler:
+    build: ./gate-handler
+    container_name: gate-handler
+    ports:
+      - "3000:3000"
+    networks:
+      - sgnet
+
+  # Postgres database service
+  db:
+    image: postgres:15
+    container_name: smartgatedb
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: smartgatedb
+    ports:
+      - "5432:5432"
+    volumes:
+      - smartgate-data:/var/lib/postgresql/data
+    networks:
+      - sgnet
+
+volumes:
+  smartgate-data:
