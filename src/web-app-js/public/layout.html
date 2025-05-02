@@ -1,0 +1,39 @@
+<!-- public/layout.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartGate</title>
+    <style>
+        body {
+            background-color: white;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Welcome to the SmartGate</h1>
+        <nav>
+            <ul>
+                <li><a href="/" data-link>HOME</a></li>
+                <li><a href="/users" data-link>USERS</a></li>
+                <li><a href="/alerts" data-link>ALERTS</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Main content will be injected dynamically via spa.js -->
+    <main id="app">
+        <!-- Content will be loaded based on route -->
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/public/js/index_socket.js"></script>
+    <script src="/public/js/spa.js"></script>
+
+    <footer>
+        <p>Talha, Sabin, Christopher, Dharsha</p>
+    </footer>
+</body>
+</html>
