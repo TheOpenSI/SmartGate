@@ -21,4 +21,5 @@ COPY . /gate-handler/
 # Expose Uvicorn
 EXPOSE 3000
 
-CMD ["python", "gate-handler.py"]
+# Run the gate-handler script and allow bash access
+CMD ["/bin/bash", "-c", "python gate-handler.py"]
