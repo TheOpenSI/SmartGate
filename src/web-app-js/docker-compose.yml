@@ -27,6 +27,8 @@ services:
     container_name: gate-handler
     ports:
       - "3000:3000"
+    volumes:
+      - ./gate-handler:/gate-handler
     networks:
       - sgnet
 
