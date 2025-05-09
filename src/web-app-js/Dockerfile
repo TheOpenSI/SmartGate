@@ -17,6 +17,18 @@ RUN apt-get update && \
 # Update npm to the latest version
 RUN npm install -g npm@latest
 
+# Customize Bash
+RUN cat <<EOF > ~/.bashrc
+# If not running interactively, don't do anything
+[ "$-" != "${-#*i}" ] && return
+# Customize the commands
+alias ls='ls --color=auto'
+alias grep='grep --color=auto'
+alias enterdb='psql -h db -U admin -d smartgatedb'
+# Change prompt to show the current directory and the name of the container
+PS1='[sgwebjs \W]\$ '
+EOF
+
 # Expose a port for web server
 EXPOSE 8000
 
