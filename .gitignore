@@ -1,0 +1,14 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# If setting up locally with the setup script ensure that the torch and torchvision installation files and folders are ignored
+setup/torch-1.10.0-cp36-cp36m-linux_aarch64.whl
+setup/torchvision/
+
+# Ignore installation related files for driver installation
+setup/drivers/build
+
+
+.idea

@@ -1,0 +1,16 @@
+0: Swamp Wallaby
+1: Common Brushtail Possum
+2: Eastern Grey Kangaroo
+3: Common Wombat
+4: Red-necked Wallaby
+5: Rattus sp.
+6: Red Fox
+7: Superb Lyrebird
+8: Australian Brush-turkey
+9: Fallow Deer
+10: Long-nosed Bandicoot
+11: Short-eared Brushtail Possum
+12: Euro
+13: White-winged Chough
+14: Pig
+15: Red-necked Pademelon

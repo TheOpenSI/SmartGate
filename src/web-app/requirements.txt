@@ -1,0 +1,17 @@
+authlib
+dbus-python
+python-dotenv
+fastapi
+flask
+h11
+httpx
+jinja2
+psycopg
+requests
+starlette
+uvicorn
+websocket-client
+websockets
+pandas
+matplotlib
+plotly

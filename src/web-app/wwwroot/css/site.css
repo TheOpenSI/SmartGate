@@ -1,0 +1,424 @@
+﻿/* Reset Default Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+/* Ensure Body Takes Full Height */
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Ensure Content Pushes Footer Down */
+.main-content {
+    flex-grow: 1; /* Pushes footer to bottom */
+    padding-top: 30px; /* Ensures content isn't hidden under fixed header */
+}
+
+/* Header Styles */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: black;
+    width: 100%;
+    position: fixed; /* Keeps header at the top */
+    top: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.8); /* Semi-transparent black */
+    padding: 15px 20px;
+    z-index: 1000;
+}
+
+/* Logo */
+.logo {
+    font-size: 20px;
+    font-weight: bold;
+    color: green;
+}
+
+/* Navigation */
+nav ul {
+    list-style: none;
+    display: flex;
+    gap: 20px;
+}
+
+nav ul li {
+    position: relative;
+}
+
+nav ul li a {
+    text-decoration: none;
+    color: white;
+    font-size: 14px;
+    padding: 8px 12px;
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+nav ul li a:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    color: #ffcc00;
+}
+
+/* Dropdown */
+.dropdown {
+    position: relative;
+}
+
+.dropdown-content {
+    display: none; /* Hidden by default */
+    position: absolute;
+    background-color: #fff; /* Solid background */
+    min-width: 160px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    padding: 10px;
+    z-index: 1001; /* Above header */
+    top: 100%; /* Below the SETTINGS link */
+    left: 0;
+}
+
+.dropdown-content label {
+    color: #333; /* Readable text */
+    font-size: 14px;
+}
+
+#brightness-slider {
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* Login Button */
+.login-btn {
+    background-color: #ffcc00;
+    padding: 8px 15px;
+    text-decoration: none;
+    color: black;
+    font-weight: bold;
+    border-radius: 5px;
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+.login-btn:hover {
+    background-color: #ffd633;
+    color: black;
+}
+
+.dummy-login-btn {
+    background-color: #be4815;
+    margin-right: -220px;
+    padding: 8px 15px;
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+    border-radius: 5px;
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+.dummy-login-btn:hover {
+    background-color: #ff0000;
+}
+
+/* Login Buttons (Left-aligned) */
+.login-btns {
+    display: flex;
+    gap: 240px;
+}
+
+/* Responsive Header */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        padding: 10px 20px;
+    }
+
+    .logo {
+        margin-bottom: 10px;
+    }
+
+    nav ul {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .login-btn {
+        margin-top: 10px;
+    }
+}
+
+/* Background Video - Full Page */
+#backgroundVideo {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh; /* Covers full viewport */
+    object-fit: cover;
+    z-index: -5; /* Ensures it's behind everything */
+}
+
+/* Dark Overlay */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4); /* Darkens video for better readability */
+    z-index: -4; /* Stays behind content */
+}
+
+/* Hero Section */
+.hero {
+    position: relative;
+    text-align: center;
+    color: white;
+    padding: 100px 20px;
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+}
+
+.hero p {
+    text-align: center;
+    font-size: 18px;
+    margin-top: 20px;
+    padding: 10px 20px;
+    color: goldenrod;
+    font-weight: bold;
+}
+
+/* About Us Section */
+.about-container {
+    max-width: 90%;
+    margin: 0 auto; /* Keep spacing uniform */
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 20px; /* Reduce padding to remove excess space */
+    min-height: auto;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
+    color: white;
+    overflow: hidden;
+}
+
+
+/* Meet Our Team Heading */
+.about-container h1 {
+    font-size: 40px;
+    font-weight: bold;
+    color: #ffcc00;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-align: center;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    position: relative;
+    padding-bottom: 10px;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+}
+
+/* Team Members Container */
+.team-members {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap; /* Ensures responsiveness */
+    gap: 20px;
+    max-width: 1200px;
+}
+
+/* Individual Team Member Card */
+.team-member {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    width: 250px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+/* Team Member Image */
+.team-member img {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 3px solid #ffcc00;
+    margin-bottom: 15px;
+}
+
+/* Member Name */
+.team-member h3 {
+    font-size: 20px;
+    color: #ffcc00;
+    margin-bottom: 5px;
+}
+
+/* Member Info */
+.team-member p {
+    font-size: 14px;
+    color: white;
+    margin: 5px 0;
+    text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.7);
+}
+
+/* Responsive Layout */
+@media (max-width: 768px) {
+    .team-members {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .team-member {
+        width: 90%;
+    }
+
+    .about-container h1 {
+        font-size: 28px;
+    }
+
+    .team-member img {
+        width: 120px;
+        height: 120px;
+    }
+}
+
+
+/* Image Slider */
+.slider-container {
+    width: 660px;
+    height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 200px auto 30px auto;
+}
+
+.image-slider {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Image Styling */
+.image-slider img {
+    width: 300px;
+    height: 250px;
+    object-fit: cover;
+    border-radius: 8px;
+    transition: opacity 0.5s ease-in-out; /* Smooth transition */
+}
+
+/* Fade-Out Effect */
+.fade-out {
+    opacity: 0;
+}
+
+
+/* Footer */
+footer {
+    background-color: #1a1a1a;
+    color: white;
+    padding: 20px 0;
+    text-align: center;
+    font-size: 14px;
+    width: 100%;
+    position: relative;
+    z-index: 10; /* Ensure it's visible above video */
+    margin-top:180px;
+}
+
+/* Footer Container */
+.footer-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 10px 20px;
+    flex-wrap: wrap;
+}
+
+/* Footer Links */
+.footer-links a {
+    color: #ffcc00;
+    text-decoration: none;
+    margin: 0 10px;
+    font-weight: bold;
+    transition: color 0.3s ease-in-out;
+}
+
+    .footer-links a:hover {
+        color: #ffffff;
+    }
+
+/* Responsive Footer */
+@media (max-width: 768px) {
+    .footer-container {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .footer-links {
+        margin: 10px 0;
+    }
+}
+
+/* User Menu */
+.user-menu {
+    display: none;
+    position: absolute;
+    top: 60px; /* Position below the avatar */
+    right: 0;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px;
+    border-radius: 5px;
+    color: white;
+    text-align: center;
+    min-width: 200px;
+}
+
+.profile-pic {
+    width: 50px;
+    height: 50px; /* Ensure height is the same as width */
+    border-radius: 50%; /* To make it a perfect circle */
+}
+
+.user-menu p {
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+/* Logout Button */
+.logout-btn {
+    color: #ffcc00;
+    text-decoration: none;
+    font-weight: bold;
+    border: 1px solid #ffcc00;
+    padding: 5px 10px;
+    border-radius: 5px;
+    display: inline-block;
+    transition: background-color 0.3s;
+}
+
+.logout-btn:hover {
+    background-color: #ffcc00;
+    color: black;
+}

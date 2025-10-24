@@ -1,0 +1,4 @@
+# SmartGate Web App Project Commands
+alias entersgweb='[[ "$(pwd)" != *src/web-app* ]] && cd src/web-app && docker-compose exec sgwebimage bash || docker-compose exec sgwebimage bash'
+alias buildsgweb='[[ "$(pwd)" != *src/web-app* ]] && cd src/web-app && docker-compose up --build || docker-compose up --build'
+alias enterwebapp='[[ "$(pwd)" != *src/web-app* ]] && cd src/web-app'

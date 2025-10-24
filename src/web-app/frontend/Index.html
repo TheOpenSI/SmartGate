@@ -1,0 +1,67 @@
+﻿{% extends "layout.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <section class="hero">
+            <video autoplay muted loop id="backgroundVideo">
+                <source src="/static/NewFolder/bakground_video.mp4" type="video/mp4"> <!-- need to change new folder to video -->
+                Your browser does not support the video tag.
+            </video>
+
+            <div class="overlay"></div>
+
+        <!-- Centered Image Container -->
+        <div class="slider-container">
+            <div class="image-slider">
+                <img id="image1" src="/static/images/red-ruffed-lemur.jpg" alt="Wildlife Image 1">
+                <img id="image2" src="/static/images/bongo-antelope.jpg" alt="Wildlife Image 2">
+                <img id="image3" src="/static/images/red-panda.jpg" alt="Wildlife Image 3">
+            </div>
+        </div>
+
+        <p><BR><BR>
+            "SmartGate uses cutting-edge technology to protect endangered species by <BR>
+                autonomously controlling gates with real-time detection.<BR>
+                Monitor gate status, view live camera feeds,<BR>
+                and track wildlife interactions<BR>
+        </p>
+    </section>
+</div>
+
+<script>
+    const imageSets = [
+        ["/static/images/red-ruffed-lemur.jpg", "/static/images/bongo-antelope.jpg", "/static/images/red-panda.jpg"],
+        ["/static/images/oranguton.jpg", "/static/images/wild_fox.jpg", "/static/images/rihno.jpg"],
+        ["/static/images/panda.jpg", "/static/images/wild_fox.jpg", "/static/images/amur-leopard.jpg"]
+    ];
+
+    let currentSetIndex = 0;
+    const image1 = document.getElementById("image1");
+    const image2 = document.getElementById("image2");
+    const image3 = document.getElementById("image3");
+
+    function changeImages() {
+        // Apply fade-out effect
+        image1.classList.add("fade-out");
+        image2.classList.add("fade-out");
+        image3.classList.add("fade-out");
+
+        setTimeout(() => {
+            currentSetIndex = (currentSetIndex + 1) % imageSets.length;
+
+            image1.src = imageSets[currentSetIndex][0];
+            image2.src = imageSets[currentSetIndex][1];
+            image3.src = imageSets[currentSetIndex][2];
+
+            // Apply fade-in effect after changing images
+            image1.classList.remove("fade-out");
+            image2.classList.remove("fade-out");
+            image3.classList.remove("fade-out");
+        }, 500); // Matches animation duration
+    }
+
+    setInterval(changeImages, 3000); // Change images every 3 seconds
+</script>
+{% endblock %}

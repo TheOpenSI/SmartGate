@@ -1,0 +1,71 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}{{title}}{% endblock %} - SmartGate</title>
+    <link href="https://unpkg.com/tabulator-tables/dist/css/tabulator.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/site.css" />
+</head>
+<body data-page="{{ page }}">
+    <header>
+        <div class="logo">SMARTGATE</div>
+        <nav>
+            <ul>
+                <li><a href="/">DASHBOARD</a></li>
+                <li><a href="/gates">GATES</a></li>
+                <li><a href="/alerts">ALERTS</a></li>
+                <li><a href="/users">USERS</a></li>
+                <li><a href="/stats">STATS</a></li>
+                <li><a href="/about">ABOUT US</a></li>
+
+                {# <!-- <li class="dropdown">
+                    <a href="#">SETTINGS</a>
+                    <div class="dropdown-content">
+                        
+                        <label for="brightness-slider">Brightness:</label>
+                        <input type="range" id="brightness-slider" min="50" max="150" value="100">
+                    </div>
+                </li> --> #}
+            </ul>
+        </nav>
+        {% if user %}
+        <div class="user-info">
+            <div class="profile-avatar" onclick="toggleUserMenu()">
+                <img src="{{ user.avatar_url }}" alt="User Avatar" class="profile-pic">
+            </div>
+            <div class="user-menu" id="userMenu">
+                <p class="username">Username: {{ user.username }}</p>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        </div>        
+        {% else %}
+        {# <!-- This is temporary login button for testing and development --> #}
+        <div class="login-btns">
+            <a href="/dummy-login" class="dummy-login-btn">DUMMY LOGIN</a>
+            <a href="/login" class="login-btn">LOGIN</a>
+            <style>
+                nav {
+                    margin-left: 125px;
+                }
+            </style>
+        </div>
+        {% endif %}
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="footer-container">
+            <div class="footer-left">
+                <p>© 2025 SmartGate | Protecting Endangered Species</p>
+            </div>
+        </div>
+        <p class="footer-bottom">&copy; 2025 SmartGate. Powered by Jetson Nano & TensorRT.</p>
+    </footer>
+    <script src="/static/js/websocket-client.js"></script>
+    <script src="/static/js/site.js"></script>
+</body>
+</html>
