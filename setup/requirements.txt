@@ -1,7 +1,7 @@
 numpy==1.19.0
 pandas==0.22.0
 Pillow==8.4.0
-PyYAML==3.12
+PyYAML==5.4
 scipy==1.5.4
 psutil
 tqdm==4.64.1
