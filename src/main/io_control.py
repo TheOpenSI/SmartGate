@@ -56,7 +56,7 @@ def set_all_pins():
 
     # Ouput pins
     for pin in oPins:
-        GPIO.setup(oPins.get(pin), GPIO.OUT)
+        GPIO.setup(oPins.get(pin), GPIO.OUT, initial=GPIO.LOW)
 
     # Input pins
     for pin in iPins:
@@ -74,4 +74,5 @@ def all_pins_off():
     set_val('ENB', False)
     set_val('IN3', False)
     set_val('IN4', False)
+    set_val('FAN', False)
     return True

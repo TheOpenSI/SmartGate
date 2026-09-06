@@ -1,4 +1,3 @@
-
 import json
 import os
 
@@ -6,9 +5,19 @@ class JsonConfig:
     """
     Small helper class for reading the different classes from the JSON config
 
-    :param config_path: Path to the config file, in JSON format, containing the rules (default: `../../config/config.json`)
+    :param config_path: Path to the config file, in JSON format, containing the rules (default: `config/config.json`,
+                         resolved relative to this repo regardless of the working directory the script was launched from)
     """
-    def __init__(self, config_path='../../config/config.json'):
+    def __init__(self, config_path=None):
+        #Default path is resolved relative to this file's own location (src/main/json_config.py), not the
+        #process's current working directory. A cwd-relative default ('../../config/config.json') breaks as
+        #soon as the script is launched from anywhere other than src/main/ - which is exactly what happens
+        #both in the Docker container (WORKDIR /app, so `python3 src/main/live_detection.py` runs with cwd=/app)
+        #and under the systemd unit (WorkingDirectory=/app) that runs this in production.
+        if config_path is None:
+            repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            config_path = os.path.join(repo_root, 'config', 'config.json')
+
         #Return dictionary from the JSON configuration file
         self.config_path = os.path.abspath(config_path)
         self.config_dir  = os.path.dirname(self.config_path)
@@ -80,4 +89,3 @@ class JsonConfig:
         if not os.path.isabs(path):
             return os.path.normpath(os.path.join(self.config_dir, path))
         return path
-        

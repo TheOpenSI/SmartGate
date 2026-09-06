@@ -9,11 +9,6 @@ import time
 
 
 EXPLICIT_BATCH = 1 << (int)(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
-host_inputs  = []
-cuda_inputs  = []
-host_outputs = []
-cuda_outputs = []
-bindings = []
 
 
 class YoloTRT():
@@ -24,7 +19,7 @@ class YoloTRT():
     :param library: Path to the TensorRT library
     :param yolor_ver: Version of YOLO being used
     """
-    def __init__(self, config : dict, library : str="../../lib/libmyplugins.so", yolo_ver : str="v5"):
+    def __init__(self, config : dict, library : str=None, yolo_ver : str="v5"):
         #Set config attributes appropriately
         engine       = config['path']
         classes_file = config['classes']
@@ -32,8 +27,6 @@ class YoloTRT():
 
         self.CONF_THRESH = conf 
         self.IOU_THRESHOLD = 0.4
-        self.LEN_ALL_RESULT = 38001
-        self.LEN_ONE_RESULT = 38
         self.yolo_version = yolo_ver
 
         #Categories will be obtained from human-readable label text files
@@ -44,33 +37,55 @@ class YoloTRT():
                 classes.append(class_name.strip())
 
         self.categories = classes
+
+        self.LEN_ONE_RESULT = 5 + len(self.categories)
+        self.LEN_ALL_RESULT = 25200 * self.LEN_ONE_RESULT
         
         TRT_LOGGER = trt.Logger(trt.Logger.INFO)
 
-        ctypes.CDLL(library)
+        if library:
+            ctypes.CDLL(library)
 
         with open(engine, 'rb') as f:
             serialized_engine = f.read()
 
         runtime = trt.Runtime(TRT_LOGGER)
         self.engine = runtime.deserialize_cuda_engine(serialized_engine)
-        self.batch_size = self.engine.max_batch_size
+        self.context = self.engine.create_execution_context()
 
-        for binding in self.engine:
-            size = trt.volume(self.engine.get_binding_shape(binding)) * self.batch_size
-            dtype = trt.nptype(self.engine.get_binding_dtype(binding))
+        #Explicit-batch engine built with batch size baked into the input shape (see EXPLICIT_BATCH above)
+        self.batch_size = 1
+
+        #Per-instance buffers (TensorRT 10 named-tensor API). These used to be module-level
+        #globals, which meant every YoloTRT instance shared (and clobbered) the same buffers -
+        #moved onto self so multiple instances/engines can coexist safely.
+        self.tensor_names = []
+        self.host_inputs   = []
+        self.cuda_inputs   = []
+        self.host_outputs  = []
+        self.cuda_outputs  = []
+
+        for i in range(self.engine.num_io_tensors):
+            name = self.engine.get_tensor_name(i)
+            self.tensor_names.append(name)
+
+            shape = self.engine.get_tensor_shape(name)
+            size = trt.volume(shape)
+            dtype = trt.nptype(self.engine.get_tensor_dtype(name))
             host_mem = cuda.pagelocked_empty(size, dtype)
             cuda_mem = cuda.mem_alloc(host_mem.nbytes)
 
-            bindings.append(int(cuda_mem))
-            if self.engine.binding_is_input(binding):
-                self.input_w = self.engine.get_binding_shape(binding)[-1]
-                self.input_h = self.engine.get_binding_shape(binding)[-2]
-                host_inputs.append(host_mem)
-                cuda_inputs.append(cuda_mem)
+            #Bind the device address now so it doesn't need to be re-set before every Inference() call
+            self.context.set_tensor_address(name, int(cuda_mem))
+
+            if self.engine.get_tensor_mode(name) == trt.TensorIOMode.INPUT:
+                self.input_w = shape[-1]
+                self.input_h = shape[-2]
+                self.host_inputs.append(host_mem)
+                self.cuda_inputs.append(cuda_mem)
             else:
-                host_outputs.append(host_mem)
-                cuda_outputs.append(cuda_mem)
+                self.host_outputs.append(host_mem)
+                self.cuda_outputs.append(cuda_mem)
 
     def PreProcessImg(self, img):
         image_raw = img
@@ -101,19 +116,18 @@ class YoloTRT():
 
     def Inference(self, img):
         input_image, image_raw, origin_h, origin_w = self.PreProcessImg(img)
-        np.copyto(host_inputs[0], input_image.ravel())
+        np.copyto(self.host_inputs[0], input_image.ravel())
         stream = cuda.Stream()
-        self.context = self.engine.create_execution_context()
-        cuda.memcpy_htod_async(cuda_inputs[0], host_inputs[0], stream)
+        cuda.memcpy_htod_async(self.cuda_inputs[0], self.host_inputs[0], stream)
         t1 = time.time()
-        self.context.execute_async(self.batch_size, bindings, stream_handle=stream.handle)
-        cuda.memcpy_dtoh_async(host_outputs[0], cuda_outputs[0], stream)
+        self.context.execute_async_v3(stream_handle=stream.handle)
+        cuda.memcpy_dtoh_async(self.host_outputs[0], self.cuda_outputs[0], stream)
         stream.synchronize()
         t2 = time.time()
-        output = host_outputs[0]
+        output = self.host_outputs[0]
                 
         for i in range(self.batch_size):
-            result_boxes, result_scores, result_classid = self.PostProcess(output[i * self.LEN_ALL_RESULT: (i + 1) * self.LEN_ALL_RESULT], origin_h, origin_w)
+            result_boxes, result_scores, result_classid = self.PostProcess(output, origin_h, origin_w)
             
         det_res = []
         for j in range(len(result_boxes)):
@@ -127,14 +141,39 @@ class YoloTRT():
         return det_res, t2-t1
 
     def PostProcess(self, output, origin_h, origin_w):
-        num = int(output[0])
-        if self.yolo_version == "v5":
-            pred = np.reshape(output[1:], (-1, self.LEN_ONE_RESULT))[:num, :]
-            pred = pred[:, :6]
-        elif self.yolo_version == "v7":
-            pred = np.reshape(output[1:], (-1, 6))[:num, :]
-        
-        boxes = self.NonMaxSuppression(pred, origin_h, origin_w, conf_thres=self.CONF_THRESH, nms_thres=self.IOU_THRESHOLD)
+        # Raw TRT7 output: flat array of 25200 * (5 + num_classes)
+        # Each detection: [x, y, w, h, objectness, class0_score, class1_score, ...]
+        num_classes = len(self.categories)
+        pred = np.reshape(output, (-1, self.LEN_ONE_RESULT))
+
+        # Filter by objectness * class confidence
+        # Get objectness scores
+        obj_conf = pred[:, 4]
+
+        # Multiply objectness by class scores
+        class_scores = pred[:, 5:] * obj_conf[:, np.newaxis]
+
+        # Get best class and score for each detection
+        class_ids = np.argmax(class_scores, axis=1)
+        scores = np.max(class_scores, axis=1)
+
+        # Filter by confidence threshold
+        mask = scores >= self.CONF_THRESH
+        filtered = pred[mask]
+        filtered_scores = scores[mask]
+        filtered_class_ids = class_ids[mask]
+
+        if len(filtered) == 0:
+            return np.array([]), np.array([]), np.array([])
+
+        # Build prediction array: [x, y, w, h, score, class_id]
+        result = np.zeros((len(filtered), 6))
+        result[:, :4] = filtered[:, :4]  # x, y, w, h
+        result[:, 4] = filtered_scores
+        result[:, 5] = filtered_class_ids
+
+        # Run NMS
+        boxes = self.NonMaxSuppression(result, origin_h, origin_w, conf_thres=self.CONF_THRESH, nms_thres=self.IOU_THRESHOLD)
         result_boxes = boxes[:, :4] if len(boxes) else np.array([])
         result_scores = boxes[:, 4] if len(boxes) else np.array([])
         result_classid = boxes[:, 5] if len(boxes) else np.array([])
@@ -214,4 +253,3 @@ class YoloTRT():
             c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
             cv2.rectangle(img, c1, c2, color, -1, cv2.LINE_AA)  # filled
             cv2.putText(img, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA,)
-        

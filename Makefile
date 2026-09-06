@@ -10,6 +10,8 @@ run:
 	--network host \
 	-it --rm \
 	--device /dev/video0 \
+	--device /dev/gpiochip0 \
+	--device /dev/gpiochip1 \
 	--device /dev/nvhost-ctrl \
 	--device /dev/nvhost-ctrl-gpu \
 	--device /dev/nvhost-prof-gpu \
@@ -19,6 +21,8 @@ run:
 	-v /tmp/argus_socket:/tmp/argus_socket \
 	-v /etc/enctune.conf:/etc/enctune.conf \
 	-v /home/nvidia/tegra_multimedia_api:/home/nvidia/tegra_multimedia_api \
+	-v $(CURDIR)/models:/app/models \
+	-e JETSON_MODEL_NAME=JETSON_ORIN_NANO \
 	smartgate:latest /bin/bash
 
 #Build docker environment

@@ -16,6 +16,7 @@ from json_config import JsonConfig
 
 import signal
 import sys
+import time
 
 def gstreamer_pipeline(
     capture_width=1280,
@@ -51,8 +52,9 @@ def main():
     #Global HTTP server for resource allocation and deallocation
     global web_server
 
-    #Set up signal handler keyboard interrupt
+    #Set up signal handler keyboard interrupt / termination (e.g. systemctl stop/restart, docker stop)
     signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
     #Initialize configuration settings for the SmartGate
     config = JsonConfig()
@@ -72,12 +74,11 @@ def main():
     #Should also make the web server optional as well
     web_server = Initialize_Server(server_config)
 
-    #Set up the GPIO channel
-    GPIO.setmode(GPIO.BOARD)
-    GPIO.setup(7, GPIO.OUT, initial=GPIO.LOW)
-
     #Initialize IO pins and door control
+    #NOTE: io.set_all_pins() now sets mode + all output pins with initial=GPIO.LOW itself,
+    #so the old standalone GPIO.setmode()/GPIO.setup(7, ...) block for FAN is no longer needed.
     io.set_all_pins()
+    io.all_pins_off()  #Defensive: force a known-safe (all LOW) state before anything else touches the pins
     door_controller = DoorControl()
 
     #The HTTP Server would need the reference of the door_controller object to get status on each '/status' GET request
@@ -90,7 +91,16 @@ def main():
     object_list = []
 
     #Open the camera using GStreamer pipeline
-    cap = cv2.VideoCapture(gstreamer_pipeline(), cv2.CAP_GSTREAMER)
+    gst_str = (
+        "nvarguscamerasrc sensor-id=0 ! "
+        "video/x-raw(memory:NVMM), width=1280, height=720, "
+        "format=(string)NV12, framerate=(fraction)30/1 ! "
+        "nvvidconv flip-method=0 ! "
+        "video/x-raw, width=640, height=480, format=(string)BGRx ! "
+        "videoconvert ! "
+        "video/x-raw, format=(string)BGR ! appsink"
+    )
+    cap = cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
 
     #Our main loop
     while True:
@@ -118,7 +128,8 @@ def main():
             if io.get_val('PIR'):
                 current_state = State.DETECT
             else:
-                current_state = State.IDLE #Put back to IDLE state
+                current_state = State.IDLE
+                time.sleep(0.1) #Put back to IDLE state
 
         #------------DETECT State ----------------------------------------------------------
         elif current_state == State.DETECT:

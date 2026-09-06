@@ -1,17 +1,16 @@
 {
     "model": {
-        "path": "../models/yolov5s.engine",
-        "classes": "../models/classes/yolov5s.txt",
+        "path": "../models/marsupial_16s.engine",
+        "classes": "../models/classes/marsupial_16s.txt",
         "confidence": 0.5
     },
-
     "rules": [
         {
-            "objects": ["dog"],
+            "objects": ["Swamp Wallaby", "Eastern Grey Kangaroo", "Common Wombat", "Red-necked Wallaby", "Long-nosed Bandicoot", "Short-eared Brushtail Possum", "Euro", "Red-necked Pademelon", "Common Brushtail Possum"],
             "action": "OPEN"
         },
         {
-            "objects": ["cat"],
+            "objects": ["Red Fox", "Fallow Deer", "Pig"],
             "action": "CLOSE"
         }
     ],
