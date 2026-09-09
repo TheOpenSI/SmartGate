@@ -298,6 +298,12 @@ Users are free to configure the rules to set the behaviour of the gate specified
 
 - `server` section contains the settings for the web server
     - `port` is the port number for which the web server would run under. In the example it's set to `8080`
+- Run this on the host to setup the web server:
+
+```sh
+cd ~/SmartGate/src/web-app
+sudo docker build -t smartgate-web-app:latest .
+```
 
 ## Usage
 

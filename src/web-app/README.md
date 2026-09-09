@@ -81,18 +81,3 @@ This `README.md` will guide users through the steps needed to clone the reposito
 
 - If you make changes to the `requirements.txt`, `Dockerfile`, or `docker-compose.yml`, make sure stop the docker composition from running and rebuild the images using __Step 3__
 
-- If you make **changes to the sql files** or **stop the docker-compose from running** be sure to remove the docker volumes and containers related to the web-app by doing:
-
-  Linux and MacOS:
-  ```bash
-  ./cleanup.sh
-  ```
-
-  Windows:
-  ```powershell
-  .\cleanup.ps1
-  ```
-
-  This will give you a fresh build of the images to be run as containers after you do __Step 3__
-
-  
