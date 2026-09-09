@@ -68,6 +68,14 @@ path on the Orin Nano currently built. While the same project could be run bare-
    (or equivalent) runs without a `cudacompat` panic. If you hit
    `panic: runtime error: slice bounds out of range ... cudacompat`, see
    [Troubleshooting](#troubleshooting).
+
+   If you also plan to run the web-app (see [Web App](#web-app)), confirm Docker Compose
+   is available: `docker compose version` (bundled with recent Docker installs) or
+   `docker-compose --version` (standalone). Install with:
+```sh
+   sudo apt-get install docker-compose
+```
+   if neither is found.
 3. **Configure the CSI camera** via `sudo /opt/nvidia/jetson-io/jetson-io.py` →
    *Configure Jetson 22pin CSI Connector* → select the IMX219 overlay matching your physically
    connected port (A/B/C check your wiring, not just the first option), then reboot. Confirm
@@ -298,12 +306,17 @@ Users are free to configure the rules to set the behaviour of the gate specified
 
 - `server` section contains the settings for the web server
     - `port` is the port number for which the web server would run under. In the example it's set to `8080`
-- Run this on the host to setup the web server:
+
+### Web App
+- Run this on the host to setup the web app:
 
 ```sh
 cd ~/SmartGate/src/web-app
-sudo docker build -t smartgate-web-app:latest .
+sudo docker-compose up --build -d
 ```
+- Go to `http://localhost:8000` on the nano or `http://<nano-ipv4-address>:8000` to view the web-app 
+
+`Note`: Running both the web app and the live detection on the nano may cause performance issues
 
 ## Usage
 
