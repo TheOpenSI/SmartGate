@@ -1,0 +1,9 @@
+# Docker ignore file to clean up web server compose
+# Ignores web erver folder so that it is not present in llive detection container
+
+src/web-app/
+docs/
+.git/
+.idea/
+__pycache__/
+*.py[cod]
