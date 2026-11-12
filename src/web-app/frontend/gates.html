@@ -1,13 +1,8 @@
-﻿{% extends "layout.html" %}
-
-{% block title %}Gates{% endblock %}
-
-{% block content %}
 <!-- Main Content Wrapper -->
 <div class="main-content">
     <section class="background">
         <video autoplay muted loop id="backgroundVideo">
-            <source src="../static/NewFolder/bakground_video.mp4" type="video/mp4"> <!-- need to change new folder to video -->
+            <source src="/static/videos/background_video.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
 
@@ -15,81 +10,240 @@
     </section>
 
     <div class="about-container">
-        <h1>Gates Management</h1>
+        <h1>SmartGate Live Monitoring</h1>
     </div>
 
-    <!-- Camera Feeds -->
-    <div class="camera-feeds">
-        <div class="camera-feed" data-gate-no="1">
-            <img src="/static/images/amur-leopard.jpg" alt="Camera Feed">
-            <div class="feed-info">
-                <span>GATE NO: 1 </span><br>
-                <span class="status closed">Status: Closed</span>
-            </div>
-            <div class="feed-buttons">
-                <button class="btn open">OPEN</button>
-                <button class="btn close">CLOSE</button>
-            </div>
+    <div class="live-monitor">
+        <div class="live-top">
+            <!-- Live camera from the Jetson, with the gate controls under it -->
+            <section class="camera-panel">
+                <div class="camera-header">
+                    <span>Jetson Camera</span>
+                    <span class="header-right">
+                        <span id="cameraMeta" class="meta-text"></span>
+                        <span id="cameraBadge" class="badge">Unavailable</span>
+                    </span>
+                </div>
+                <div class="camera-frame">
+                    <img id="liveStream" alt="Live camera feed from the Jetson">
+                    <div id="cameraMessage" class="camera-message">Connecting to the Jetson...</div>
+                </div>
+
+                <!-- Manual control of the real gate (the Jetson moves the motor) -->
+                <div class="control-bar">
+                    <div class="control-group">
+                        <span class="control-label">Gate</span>
+                        <div class="control-buttons">
+                            <button type="button" class="gate-btn open" data-action="open" disabled>Open</button>
+                            <button type="button" class="gate-btn close" data-action="close" disabled>Close</button>
+                            <button type="button" class="gate-btn stop" data-action="stop" disabled>Stop</button>
+                        </div>
+                    </div>
+                    <div id="modeGroup" class="control-group" hidden>
+                        <span class="control-label">Mode</span>
+                        <div class="control-buttons segmented">
+                            <button type="button" class="mode-btn" data-mode="auto" aria-pressed="false" disabled>Auto</button>
+                            <button type="button" class="mode-btn" data-mode="manual" aria-pressed="false" disabled>Manual</button>
+                        </div>
+                    </div>
+                    <div id="snapshotGroup" class="control-group" hidden>
+                        <span class="control-label">Camera</span>
+                        <div class="control-buttons">
+                            <a id="snapshotLink" class="snapshot-btn" href="/api/live/snapshot" target="_blank" rel="noopener" aria-disabled="true">Snapshot</a>
+                        </div>
+                    </div>
+                </div>
+                <p id="modeHint" class="gate-note"></p>
+                <p id="gateHint" class="gate-note">Checking gate control...</p>
+                <p id="gateResult" class="gate-note" role="status"></p>
+            </section>
+
+            <!-- Gate status and Jetson health -->
+            <section class="status-panel">
+                <h2>Gate Status</h2>
+                <div class="gate-state">
+                    <div id="gateStateText" class="gate-state-text unavailable">Unavailable</div>
+                    <div id="motorText" class="gate-state-sub"></div>
+                </div>
+                <dl class="status-list">
+                    <dt>Mode</dt>
+                    <dd id="gateMode">Unavailable</dd>
+                    <dt>State machine</dt>
+                    <dd id="stateMachine">Unavailable</dd>
+                    <dt>Last detection</dt>
+                    <dd id="lastDetection">Unavailable</dd>
+                    <dt>Uptime</dt>
+                    <dd id="uptime">Unavailable</dd>
+                </dl>
+
+                <h3>Jetson Health</h3>
+                <div class="health-grid">
+                    <div class="meter-row">
+                        <span class="meter-label">CPU temp</span>
+                        <span id="cpuTemp" class="meter-value">Unavailable</span>
+                        <div class="meter"><span id="cpuTempBar"></span></div>
+                    </div>
+                    <div class="meter-row">
+                        <span class="meter-label">GPU temp</span>
+                        <span id="gpuTemp" class="meter-value">Unavailable</span>
+                        <div class="meter"><span id="gpuTempBar"></span></div>
+                    </div>
+                    <div class="meter-row">
+                        <span class="meter-label">CPU</span>
+                        <span id="cpuLoad" class="meter-value">Unavailable</span>
+                        <div class="meter"><span id="cpuLoadBar"></span></div>
+                    </div>
+                    <div class="meter-row">
+                        <span class="meter-label">GPU</span>
+                        <span id="gpuLoad" class="meter-value">Unavailable</span>
+                        <div class="meter"><span id="gpuLoadBar"></span></div>
+                    </div>
+                    <div class="meter-row">
+                        <span class="meter-label">Memory</span>
+                        <span id="memoryLoad" class="meter-value">Unavailable</span>
+                        <div class="meter"><span id="memoryLoadBar"></span></div>
+                    </div>
+                    <div class="meter-row">
+                        <span class="meter-label">Disk</span>
+                        <span id="diskLoad" class="meter-value">Unavailable</span>
+                        <div class="meter"><span id="diskLoadBar"></span></div>
+                    </div>
+                </div>
+            </section>
         </div>
-        <div class="camera-feed" data-gate-no="2">
-            <img src="/static/images/bongo-antelope.jpg" alt="Camera Feed">
-            <div class="feed-info">
-                <span>GATE NO: 2</span><br>
-                <span class="status closed">Status: Closed</span>
-            </div>
-            <div class="feed-buttons">
-                <button class="btn open">OPEN</button>
-                <button class="btn close">CLOSE</button>
-            </div>
+
+        <!-- Live information below the camera -->
+        <div class="info-grid">
+            <section class="info-card">
+                <h2>Jetson Connection</h2>
+                <dl>
+                    <dt>Status</dt>
+                    <dd><span id="connectionBadge" class="badge">Connecting</span></dd>
+                    <dt>Last update</dt>
+                    <dd id="lastUpdate">Unavailable</dd>
+                    <dt>Details</dt>
+                    <dd id="connectionReason">-</dd>
+                </dl>
+            </section>
+
+            <section class="info-card">
+                <h2>Animal Recognition</h2>
+                <dl>
+                    <dt>Latest animal</dt>
+                    <dd id="detectedAnimal">Unavailable</dd>
+                    <dt>Confidence</dt>
+                    <dd id="detectedConfidence">Unavailable</dd>
+                    <dt>Gate rule</dt>
+                    <dd id="detectedRule">Unavailable</dd>
+                    <dt>Detected at</dt>
+                    <dd id="detectedAt">Unavailable</dd>
+                    <dt>Also in frame</dt>
+                    <dd id="detectedOthers">Unavailable</dd>
+                    <dt>AI model</dt>
+                    <dd id="modelStatus">Unavailable</dd>
+                    <dt>Model file</dt>
+                    <dd id="modelName">Unavailable</dd>
+                </dl>
+            </section>
+
+            <section class="info-card">
+                <h2>Sensors &amp; Camera</h2>
+                <dl>
+                    <dt>Gate position</dt>
+                    <dd id="gatePosition">Unavailable</dd>
+                    <dt>PIR motion</dt>
+                    <dd id="pirMotion">Unavailable</dd>
+                    <dt>Hall sensor (open)</dt>
+                    <dd id="hallOpen">Unavailable</dd>
+                    <dt>Hall sensor (close)</dt>
+                    <dd id="hallClose">Unavailable</dd>
+                    <dt>Camera</dt>
+                    <dd id="cameraStatus">Unavailable</dd>
+                </dl>
+            </section>
         </div>
-        <div class="camera-feed" data-gate-no="3">
-            <img src="/static/images/elephant.jpeg" alt="Camera Feed">
-            <div class="feed-info">
-                <span>GATE NO: 3</span><br>
-                <span class="status closed">Status: Closed</span>
+
+        <!-- The Jetson's own counts and event log (smartgate-nano only) -->
+        <section id="analyticsSection" class="analytics-panel" hidden>
+            <div class="analytics-header">
+                <h2>Gate Analytics</h2>
+                <div class="range-filter" role="group" aria-label="Time range">
+                    <button type="button" class="range-btn" data-days="1" aria-pressed="false">Today</button>
+                    <button type="button" class="range-btn" data-days="7" aria-pressed="true">Last 7 days</button>
+                    <button type="button" class="range-btn" data-days="30" aria-pressed="false">Last 30 days</button>
+                </div>
             </div>
-            <div class="feed-buttons">
-                <button class="btn open">OPEN</button>
-                <button class="btn close">CLOSE</button>
+
+            <div id="analyticsContent">
+                <div class="kpi-row">
+                    <div class="kpi-tile">
+                        <span class="kpi-label">Detections</span>
+                        <span id="kpiDetections" class="kpi-value">-</span>
+                    </div>
+                    <div class="kpi-tile">
+                        <span class="kpi-label">Gate opens</span>
+                        <span id="kpiOpens" class="kpi-value">-</span>
+                    </div>
+                    <div class="kpi-tile">
+                        <span class="kpi-label">Gate closes</span>
+                        <span id="kpiCloses" class="kpi-value">-</span>
+                    </div>
+                    <div class="kpi-tile">
+                        <span class="kpi-label">Pests blocked</span>
+                        <span id="kpiBlocked" class="kpi-value">-</span>
+                    </div>
+                    <div class="kpi-tile">
+                        <span class="kpi-label">Manual commands</span>
+                        <span id="kpiManual" class="kpi-value">-</span>
+                    </div>
+                </div>
+
+                <div class="chart-grid">
+                    <div class="chart-card">
+                        <h3>Detections by hour (Jetson's time zone)</h3>
+                        <div id="hourChart" class="hour-chart" role="group" aria-label="Detections by hour"></div>
+                        <div class="hour-axis" aria-hidden="true">
+                            <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span>
+                        </div>
+                        <details>
+                            <summary>Show as table</summary>
+                            <table class="chart-table">
+                                <thead><tr><th>Hour</th><th>Detections</th></tr></thead>
+                                <tbody id="hourTable"></tbody>
+                            </table>
+                        </details>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3>Detections by species</h3>
+                        <ul class="chart-legend">
+                            <li><span class="swatch rule-open"></span>Opens gate</li>
+                            <li><span class="swatch rule-close"></span>Closes gate</li>
+                            <li><span class="swatch rule-none"></span>No rule</li>
+                        </ul>
+                        <div id="speciesChart" class="species-chart"></div>
+                        <details>
+                            <summary>Show as table</summary>
+                            <table class="chart-table">
+                                <thead><tr><th>Species</th><th>Detections</th><th>Gate rule</th></tr></thead>
+                                <tbody id="speciesTable"></tbody>
+                            </table>
+                        </details>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h3>Recent activity</h3>
+                    <ol id="eventList" class="event-list"></ol>
+                </div>
             </div>
-        </div>
-        <div class="camera-feed" data-gate-no="4">
-            <img src="/static/images/forest-background.jpg" alt="Camera Feed">
-            <div class="feed-info">
-                <span>GATE NO: 4</span><br>
-                <span class="status closed">Status: Closed</span>
-            </div>
-            <div class="feed-buttons">
-                <button class="btn open">OPEN</button>
-                <button class="btn close">CLOSE</button>
-            </div>
-        </div>
-        <div class="camera-feed" data-gate-no="5">
-            <img src="/static/images/oranguton.jpg" alt="Camera Feed">
-            <div class="feed-info">
-                <span>GATE NO: 5</span><br>
-                <span class="status closed">Status: Closed</span>
-            </div>
-            <div class="feed-buttons">
-                <button class="btn open">OPEN</button>
-                <button class="btn close">CLOSE</button>
-            </div>
-        </div>
-        <div class="camera-feed" data-gate-no="6">
-            <img src="/static/images/panda.jpg" alt="Camera Feed">
-            <div class="feed-info">
-                <span>GATE NO: 6</span><br>
-                <span class="status closed">Status: Closed</span>
-            </div>
-            <div class="feed-buttons">
-                <button class="btn open">OPEN</button>
-                <button class="btn close">CLOSE</button>
-            </div>
-        </div>
+            <p id="analyticsNote" class="gate-note"></p>
+        </section>
     </div>
-    <!-- Include JavaScript -->
-    <script src="/static/js/gate.js"></script>
 </div>
+
+<div id="chartTooltip" class="chart-tooltip" hidden></div>
+
 <style>
     /* Hero Section */
     .background {
@@ -104,69 +258,663 @@
         align-items: center;
         z-index: 1;
     }
-    .camera-feeds {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        grid-template-rows: repeat(2, auto);
-        gap: 15px;
-        padding: 20px;
-        position: relative; /* Ensure it stacks properly */
+
+    .live-monitor {
+        /* Chart colours: categorical slots 1-3 and the status steps (checked for colour-blind readers) */
+        --series-1: #2a78d6;
+        --rule-open: #2a78d6;
+        --rule-close: #eb6834;
+        --rule-none: #1baf7a;
+        --meter-track: #cde2fb;
+        --status-warning: #fab219;
+        --status-critical: #d03b3b;
+        --text-primary: #222;
+        --text-secondary: #555;
+        --text-muted: #777;
+        --hairline: #e1e0d9;
+
+        position: relative;
         z-index: 10; /* Higher than the video */
-        margin-top: 10px; /* Minimal gap from Gates Management */
-        margin-bottom: 20px; /* Minimal gap before footer */
+        max-width: 1200px;
+        margin: 10px auto 20px auto;
+        padding: 0 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
     }
 
-    .camera-feed {
+    .live-top {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+        gap: 15px;
+        align-items: start;
+    }
+
+    .camera-panel,
+    .status-panel,
+    .info-card,
+    .analytics-panel,
+    .chart-card {
         background: #fff;
         border-radius: 8px;
-        overflow: hidden;
-        text-align: center;
         padding: 10px;
         box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    .camera-feed img {
-        width: 100%;
-        height: 200px;
-        object-fit: cover;
-        border-bottom: 2px solid #ddd;
-    }
-
-    .feed-info {
-        margin: 10px 0;
+    .camera-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 4px 6px 10px 6px;
         font-size: 16px;
         font-weight: bold;
     }
 
-    .status.open {
-        color: green;
-    }
-
-    .status.closed {
-        color: red;
-    }
-
-    .feed-buttons {
+    .header-right {
         display: flex;
-        justify-content: center;
+        align-items: center;
         gap: 10px;
     }
 
-    .btn {
-        padding: 8px 15px;
-        border: none;
-        border-radius: 5px;
+    .meta-text {
+        font-size: 13px;
+        font-weight: normal;
+        color: var(--text-secondary);
+    }
+
+    .camera-frame {
+        position: relative;
+        max-width: 960px;
+        margin: 0 auto;
+        aspect-ratio: 4 / 3; /* The Jetson camera pipeline outputs 640x480 */
+        background: #000;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .camera-frame img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+    }
+
+    /* No stream yet: hide the browser's broken-image icon */
+    .camera-frame img:not([src]) {
+        visibility: hidden;
+    }
+
+    .camera-message {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        text-align: center;
+        color: white;
+        font-size: 18px;
+        font-weight: bold;
+        background: rgba(0, 0, 0, 0.7);
+    }
+
+    .camera-message[hidden] {
+        display: none;
+    }
+
+    /* Gate, mode and camera controls */
+    .control-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        padding: 12px 6px 0 6px;
+    }
+
+    .control-group[hidden] {
+        display: none;
+    }
+
+    .control-label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 12px;
+        font-weight: bold;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+    }
+
+    .control-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .gate-btn,
+    .mode-btn,
+    .snapshot-btn,
+    .range-btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: bold;
         cursor: pointer;
+        text-decoration: none;
     }
 
-    .btn.open {
-        background-color: green;
+    .gate-btn {
+        border: none;
         color: white;
     }
 
-    .btn.close {
-        background-color: red;
+    .gate-btn.open { background-color: green; }
+    .gate-btn.close { background-color: #333; }
+    .gate-btn.stop { background-color: #b02a2a; }
+
+    .gate-btn:disabled,
+    .mode-btn:disabled {
+        background-color: #bbb;
+        color: #f4f4f4;
+        border-color: #bbb;
+        cursor: not-allowed;
+    }
+
+    .segmented {
+        gap: 0;
+    }
+
+    .mode-btn {
+        border: 1px solid #999;
+        background: #fff;
+        color: var(--text-primary);
+    }
+
+    .mode-btn:first-child { border-radius: 6px 0 0 6px; }
+    .mode-btn:last-child { border-radius: 0 6px 6px 0; border-left: none; }
+
+    .mode-btn[aria-pressed="true"]:not(:disabled) {
+        background: #ffcc00;
+        border-color: #d4a900;
+    }
+
+    .mode-btn[aria-pressed="true"]:disabled {
+        background: #e8e8e8;
+        color: var(--text-primary);
+    }
+
+    .snapshot-btn,
+    .range-btn {
+        display: inline-block;
+        border: 1px solid #999;
+        background: #fff;
+        color: var(--text-primary);
+    }
+
+    .snapshot-btn[aria-disabled="true"] {
+        color: #aaa;
+        border-color: #ccc;
+        cursor: not-allowed;
+    }
+
+    .gate-note {
+        margin: 8px 6px 0 6px;
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    .gate-note:empty {
+        display: none;
+    }
+
+    /* Gate status panel */
+    .status-panel {
+        padding: 15px;
+    }
+
+    .status-panel h2,
+    .info-card h2,
+    .analytics-panel h2 {
+        font-size: 15px;
+        text-transform: uppercase;
+        color: #333;
+        border-bottom: 2px solid #ffcc00;
+        padding-bottom: 6px;
+        margin-bottom: 10px;
+    }
+
+    .status-panel h3,
+    .chart-card h3 {
+        font-size: 14px;
+        color: #333;
+        margin: 16px 0 8px 0;
+    }
+
+    .chart-card h3 {
+        margin-top: 0;
+    }
+
+    .gate-state {
+        padding: 12px;
+        border-radius: 6px;
+        background: #f6f6f4;
+    }
+
+    .gate-state-text {
+        font-size: 26px;
+        font-weight: bold;
+        color: var(--text-primary);
+    }
+
+    .gate-state-text.unavailable {
+        font-size: 18px;
+        font-weight: normal;
+        color: #999;
+    }
+
+    .gate-state-sub {
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+    .status-list,
+    .info-card dl {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 8px 10px;
+        font-size: 14px;
+    }
+
+    .status-list {
+        margin-top: 12px;
+    }
+
+    .status-list dt,
+    .info-card dt {
+        color: var(--text-secondary);
+    }
+
+    .status-list dd,
+    .info-card dd {
+        font-weight: bold;
+        text-align: right;
+        overflow-wrap: anywhere;
+    }
+
+    .unavailable {
+        color: #999;
+        font-weight: normal;
+    }
+
+    /* Jetson health meters: the fill turns warning / critical past the limits, and the value says so too */
+    .health-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px 16px;
+    }
+
+    .meter-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: baseline;
+        row-gap: 4px;
+        font-size: 13px;
+    }
+
+    .meter-label {
+        color: var(--text-secondary);
+    }
+
+    .meter-value {
+        font-weight: bold;
+        color: var(--text-primary);
+        text-align: right;
+    }
+
+    .meter {
+        grid-column: 1 / -1;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--meter-track);
+        overflow: hidden;
+    }
+
+    .meter span {
+        display: block;
+        height: 100%;
+        width: 0;
+        border-radius: 3px;
+        background: var(--series-1);
+    }
+
+    .meter span.warning { background: var(--status-warning); }
+    .meter span.critical { background: var(--status-critical); }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+    }
+
+    .info-card {
+        padding: 15px;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: bold;
         color: white;
+        background-color: #777;
+    }
+
+    .badge.connected, .badge.ok { background-color: green; }
+    .badge.connecting { background-color: #d39e00; }
+    .badge.disconnected { background-color: #777; }
+    .badge.error { background-color: red; }
+
+    /* Gate analytics */
+    .analytics-panel {
+        padding: 15px;
+    }
+
+    .analytics-panel[hidden] {
+        display: none;
+    }
+
+    .analytics-header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    .analytics-header h2 {
+        margin-bottom: 0;
+    }
+
+    .range-filter {
+        display: flex;
+        gap: 6px;
+    }
+
+    .range-btn {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+
+    .range-btn[aria-pressed="true"] {
+        background: #ffcc00;
+        border-color: #d4a900;
+    }
+
+    /* Keep the previous numbers on screen while new ones load */
+    #analyticsContent {
+        transition: opacity 0.2s;
+    }
+
+    #analyticsContent.refreshing {
+        opacity: 0.6;
+    }
+
+    .kpi-row {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+
+    .kpi-tile {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 12px;
+        border-radius: 6px;
+        background: #f6f6f4;
+    }
+
+    .kpi-label {
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+    .kpi-value {
+        font-size: 26px;
+        font-weight: bold;
+        color: var(--text-primary);
+    }
+
+    .chart-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .chart-card {
+        padding: 15px;
+        box-shadow: none;
+        border: 1px solid var(--hairline);
+    }
+
+    /* Detections by hour: 24 columns from one baseline, the busiest hour labelled */
+    .hour-chart {
+        display: grid;
+        grid-template-columns: repeat(24, 1fr);
+        column-gap: 2px;
+        height: 140px;
+        padding-top: 18px;
+        border-bottom: 1px solid #c3c2b7;
+    }
+
+    .hour-slot {
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        height: 100%;
+        cursor: default;
+        outline-offset: 2px;
+    }
+
+    .hour-bar {
+        position: relative;
+        width: 100%;
+        max-width: 24px;
+        border-radius: 4px 4px 0 0;
+        background: var(--series-1);
+    }
+
+    .hour-slot.hovered .hour-bar,
+    .hour-slot:focus-visible .hour-bar {
+        filter: brightness(1.15);
+    }
+
+    .hour-peak {
+        position: absolute;
+        bottom: calc(100% + 2px);
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 11px;
+        color: var(--text-secondary);
+        white-space: nowrap;
+    }
+
+    .hour-axis {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 4px;
+        font-size: 11px;
+        color: var(--text-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Detections by species: one bar per species, coloured by its gate rule, count at the tip */
+    .chart-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin: 0 0 10px 0;
+        padding: 0;
+        list-style: none;
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .chart-legend li {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .swatch {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+    }
+
+    .rule-open { background: var(--rule-open); }
+    .rule-close { background: var(--rule-close); }
+    .rule-none { background: var(--rule-none); }
+
+    .species-chart {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .species-row {
+        display: grid;
+        grid-template-columns: minmax(110px, 40%) 1fr;
+        align-items: center;
+        gap: 8px;
+        padding: 3px 0;
+        font-size: 13px;
+        outline-offset: 2px;
+    }
+
+    .species-name {
+        color: var(--text-primary);
+        overflow-wrap: anywhere;
+    }
+
+    .species-track {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .species-bar {
+        height: 14px;
+        min-width: 2px;
+        border-radius: 0 4px 4px 0;
+    }
+
+    .species-row.hovered .species-bar,
+    .species-row:focus-visible .species-bar {
+        filter: brightness(1.15);
+    }
+
+    .species-value {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .chart-empty {
+        margin: 10px 0;
+        font-size: 13px;
+        color: var(--text-muted);
+    }
+
+    .chart-card details {
+        margin-top: 10px;
+        font-size: 13px;
+    }
+
+    .chart-card summary {
+        cursor: pointer;
+        color: var(--text-secondary);
+    }
+
+    .chart-table {
+        width: 100%;
+        margin-top: 6px;
+        border-collapse: collapse;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .chart-table th,
+    .chart-table td {
+        padding: 3px 6px;
+        border-bottom: 1px solid var(--hairline);
+        text-align: left;
+    }
+
+    .event-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        font-size: 13px;
+    }
+
+    .event-list li {
+        display: grid;
+        grid-template-columns: 170px 1fr;
+        gap: 10px;
+        padding: 5px 0;
+        border-bottom: 1px solid var(--hairline);
+    }
+
+    .event-list time {
+        color: var(--text-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .chart-tooltip {
+        position: fixed;
+        z-index: 100;
+        transform: translate(-50%, calc(-100% - 8px));
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(11, 11, 11, 0.1);
+        background: #fff;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+        font-size: 12px;
+        pointer-events: none;
+        white-space: nowrap;
+    }
+
+    .chart-tooltip[hidden] {
+        display: none;
+    }
+
+    .chart-tooltip strong {
+        font-size: 13px;
+        color: var(--text-primary, #222);
+    }
+
+    .chart-tooltip span {
+        color: #555;
+    }
+
+    @media (max-width: 1000px) {
+        .live-top { grid-template-columns: 1fr; }
+        .kpi-row { grid-template-columns: repeat(3, 1fr); }
+        .chart-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 760px) {
+        .info-grid { grid-template-columns: 1fr; }
+        .kpi-row { grid-template-columns: repeat(2, 1fr); }
+        .event-list li { grid-template-columns: 1fr; gap: 2px; }
     }
 </style>
-{% endblock %}
+
+<script type="module" src="/static/js/live.js"></script>

@@ -5,10 +5,15 @@ import socketserver
 import io as python_io
 from PIL import Image
 import threading
+import time
+from collections import deque
+from datetime import datetime, timezone
 from queue import Queue
 import json
 import psutil
+import io_control as io
 from door_control import DoorControl
+from gate_states import State
 
 ### HTTP Server Handler. ###
 
@@ -18,6 +23,23 @@ gate_status  = None
 
 # Global queue to communicate between HTTP server and main thread
 command_queue = Queue()
+
+#Temperature sensor names differ between Jetson models; the first one present is used
+#('thermal-fan-est' is the original Jetson Nano's, the others are used on the Orin Nano)
+THERMAL_ZONES = ('thermal-fan-est', 'cpu-thermal', 'CPU-therm', 'tj-thermal')
+
+#--- Animal detections for the SmartGate website (GET /detections) ---
+#A "sighting" counts an animal once per visit: seeing it again within SIGHTING_GAP_S
+#of its last detection is the same visit, so a wombat in view for a minute counts once.
+SIGHTING_GAP_S = 30
+MAX_SIGHTINGS  = 100
+
+started_at       = datetime.now(timezone.utc).isoformat(timespec='seconds')  #Lets the website notice a restart
+detections_lock  = threading.Lock()
+latest_detection = None
+sightings        = deque(maxlen=MAX_SIGHTINGS)
+last_seen        = {}   #Animal name -> time it was last detected
+next_sighting_id = 1
 
 #This class is to create a multi-threaded server that can handle multiple client requests concurrently
 class ThreadedHTTPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
@@ -63,6 +85,10 @@ class HTTPHandler(http.server.BaseHTTPRequestHandler):
             status = get_jetson_status()
             self.wfile.write(json.dumps(status).encode('utf-8'))
 
+        #--- Latest detection and recent sightings, for the SmartGate website. ---
+        elif self.path == '/detections':
+            self.send_json(200, get_detections())
+
         else:
             #Obtain any other web resources contained relatively within the 'web/' directory
             print('Obtaining static resources...')
@@ -103,6 +129,11 @@ class HTTPHandler(http.server.BaseHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "success", "message": f"Command {command} received"}).encode('utf-8'))
+            elif command == 'STOP_DOOR':
+                #Stopped straight away rather than queued, so it works whatever the main loop is doing.
+                #The gate's rules can still move it again on the next detection.
+                gate_status.stop_door()
+                self.send_json(200, {"status": "success", "message": "Door stopped"})
             else:
                 self.send_response(400)
                 self.send_header('Content-type', 'application/json')
@@ -114,6 +145,17 @@ class HTTPHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({"status": "error", "message": "Invalid JSON"}).encode('utf-8'))
 
+    def send_json(self, code, data):
+        self.send_response(code)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode('utf-8'))
+
+    #The website reads /status and /detections every few seconds, so those requests aren't logged
+    def log_message(self, format, *args):
+        if getattr(self, 'path', None) not in ('/status', '/detections'):
+            super().log_message(format, *args)
+
 #Set the frame to be passed to web server
 def set_latest_frame(frame):
     global latest_frame
@@ -124,9 +166,87 @@ def set_door_controller_reference(door_controller : DoorControl):
     global gate_status
     gate_status = door_controller
 
+def _iso_now():
+    return datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+
+#What the gate rules in config.json do for these animals: 'OPEN', 'CLOSE' or None
+def _rule_action(decider, names):
+    state = decider.decide(names)
+    if state == State.DOOR_OPEN:
+        return 'OPEN'
+    if state == State.DOOR_CLOSE:
+        return 'CLOSE'
+    return None
+
+def set_latest_detections(detections, inference_time, decider):
+    """
+    Record the result of one inference for the website. Called from the main loop after each detection.
+
+    :param detections: List from YoloTRT.Inference(), each with 'class' and 'conf'
+    :param inference_time: Inference duration in seconds
+    :param decider: The RulesetDecider, used to tell which animals the rules close the gate for
+    """
+    global latest_detection, next_sighting_id
+    if not detections:
+        return
+
+    animals = sorted(
+        ({'name': str(d['class']), 'confidence': round(float(d['conf']) * 100, 1)} for d in detections),
+        key=lambda animal: animal['confidence'],
+        reverse=True,
+    )
+    #Highest confidence per animal, for when the same animal appears more than once in a frame
+    best_confidence = {}
+    for animal in animals:
+        best_confidence.setdefault(animal['name'], animal['confidence'])
+
+    now = time.time()
+    detected_at = _iso_now()
+    with detections_lock:
+        latest_detection = {
+            'animals': animals,
+            'top': animals[0],
+            'detected_at': detected_at,
+            'inference_ms': round(inference_time * 1000, 1),
+        }
+        for name, confidence in best_confidence.items():
+            if now - last_seen.get(name, 0) > SIGHTING_GAP_S:
+                sightings.append({
+                    'id': next_sighting_id,
+                    'name': name,
+                    'confidence': confidence,
+                    'action': _rule_action(decider, [name]),
+                    'seen_at': detected_at,
+                })
+                next_sighting_id += 1
+            last_seen[name] = now
+
+def get_detections():
+    with detections_lock:
+        return {'started_at': started_at, 'latest': latest_detection, 'sightings': list(sightings)}
+
+def read_cpu_temperature():
+    zones = psutil.sensors_temperatures()
+    for name in THERMAL_ZONES + tuple(zones):
+        if zones.get(name):
+            return f"{zones[name][0].current:.1f}°C"
+    return "N/A"
+
+#PIR and Hall Effect sensor pins (see io_control.py). None if a read fails.
+def read_sensors():
+    try:
+        return {
+            "pir_motion": bool(io.get_val('PIR')),
+            "hall_open": int(io.get_val('OPEN')),
+            "hall_close": int(io.get_val('CLOSE')),
+        }
+    except Exception as e:
+        print(f"[-] Sensor reading failed: {e}")
+        return {"pir_motion": None, "hall_open": None, "hall_close": None}
+
 #Obtain the statistics from the SmartGate (Jetson Nano and board)
 def get_jetson_status():
-    cpu_temp = psutil.sensors_temperatures()['thermal-fan-est'][0].current
+    cpu_temp = read_cpu_temperature()
     cpu_usage = psutil.cpu_percent()
     memory = psutil.virtual_memory()
     disk = psutil.disk_usage('/')
@@ -138,13 +258,14 @@ def get_jetson_status():
         door_state = "Open"
 
     return {
-        "cpu_temperature": f"{cpu_temp:.1f}°C",
+        "cpu_temperature": cpu_temp,
         "cpu_usage": f"{cpu_usage}%",
         "memory_usage": f"{memory.percent}%",
         "disk_usage": f"{disk.percent}%",
         "door_state" : door_state,
         "is_door_closing": gate_status.is_door_closing,
-        "is_door_opening": gate_status.is_door_opening
+        "is_door_opening": gate_status.is_door_opening,
+        **read_sensors()
     }
 
 #Read HTML web page from file

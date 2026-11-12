@@ -1,13 +1,7 @@
-{% extends "layout.html" %}
-{% set page = "user_overview" %}
-
-{% block title %}Users{% endblock %}
-
-{% block content %}
 <div class="main-content">
     <section class="hero">
         <video autoplay muted loop id="backgroundVideo">
-            <source src="/static/NewFolder/bakground_video.mp4" type="video/mp4">
+            <source src="/static/videos/background_video.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
         <div class="overlay"></div>
@@ -26,14 +20,6 @@
             </tr>
             </thead>
             <tbody>
-            {% for user in user_data %}
-                <tr id="user-{{ user.username }}" data-username="{{ user.username }}" data-role="{{ user.role_name }}">
-                    <td>{{ user.username }}</td>
-                    <td>{{ user.role_name }}</td>
-                    <td class="status {{ 'logged-in' if user.status == 'Logged in' else 'logged-out' }}">{{ user.status }}</td>
-                    <td><button onclick="removeUser('{{ user.username }}')">Remove</button></td>
-                </tr>
-            {% endfor %}
             </tbody>
         </table>
 
@@ -51,131 +37,6 @@
 
     </div>
 </div>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        document.getElementById("userTable").addEventListener("click", function (e) {
-            const row = e.target.closest("tr");
-            if (!row || e.target.tagName === "BUTTON") return;
-
-            const selectedUsername = row.getAttribute('data-username');
-            const currentRole = row.getAttribute('data-role')
-
-            document.getElementById("modalUsername").innerText = `Username: ${selectedUsername}`;
-
-            // Example roles list — replace this with a dynamic list if you fetch it from backend or WS
-            updateRoleSelectDropdown(window.availableRoles, currentRole);
-
-            document.getElementById("roleModal").style.display = "block";
-        });
-
-        document.getElementById("closeModal").onclick = function () {
-            document.getElementById("roleModal").style.display = "none";
-        };
-
-        window.onclick = function (event) {
-            if (event.target === document.getElementById("roleModal")) {
-                document.getElementById("roleModal").style.display = "none";
-            }
-        };
-
-        document.getElementById("saveRole").addEventListener("click", function () {
-            const usernameText = document.getElementById("modalUsername").innerText;
-            const username = usernameText.split(": ")[1];
-            const newRole = document.getElementById("roleSelect").value;
-
-            if (!username || !newRole) return;
-
-            console.log(`Changing role of ${username} to ${newRole}`);
-            socket.send(JSON.stringify({
-                event: "change_role",
-                data: { username, role: newRole }
-            }));
-
-            document.getElementById("roleModal").style.display = "none";
-        });
-    });
-
-    function updateUserOverviewTable(data) {
-        const userTable = document.getElementById('userTable').getElementsByTagName('tbody')[0];
-        data.forEach(user => {
-            if (!user.username) {
-                console.error('Invalid user data:', user);
-                return;
-            }
-
-            const rowId = 'user-' + user.username;
-            let row = document.getElementById(rowId);
-
-            if (!row) {
-                row = userTable.insertRow();
-                row.id = rowId;
-                row.setAttribute('data-username', user.username);
-
-                const cellUsername = row.insertCell(0);
-                const cellRole = row.insertCell(1);
-                const cellStatus = row.insertCell(2);
-                const cellAction = row.insertCell(3);
-
-                cellUsername.innerText = user.username;
-                cellRole.innerText = user.role_name;
-                cellStatus.className = 'status ' + (user.status === 'Logged in' ? 'logged-in' : 'logged-out');
-                cellStatus.innerText = user.status;
-                cellAction.innerHTML = `<button onclick="removeUser('${user.username}')">Remove</button>`;
-            } else {
-                row.cells[1].innerText = user.role_name;
-                row.cells[2].innerText = user.status;
-                row.setAttribute('data-username', user.username);
-                row.cells[2].className = 'status ' + (user.status === 'Logged in' ? 'logged-in' : 'logged-out');
-            }
-        });
-    }
-
-    function updateRoleSelectDropdown(roles, selectedRole = null) {
-        const roleSelect = document.getElementById("roleSelect");
-        
-        roleSelect.innerHTML = '';
-
-        roles.forEach(role => {
-            const option = document.createElement('option');
-            option.value = role;
-            option.textContent = role;  // No capitalization
-            if (selectedRole && role === selectedRole) {
-                option.selected = true;
-            }
-            roleSelect.appendChild(option);
-        });
-    }
-
-    function removeUser(username) {
-        if (!confirm(`Are you sure you want to remove the user: ${username}?`)) return;
-
-        fetch("/remove-user", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username })
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log(data);
-    
-            // Remove the user from the table after successful deletion
-            const row = document.getElementById('user-' + username);
-            if (data.alert) {
-                alert(data.alert)
-            } else if (row) {
-                row.remove();
-            }
-
-            socket.send(JSON.stringify({ event: "user_overview" }));
-        })
-        .catch(error => {
-            console.error("Error removing user:", error);
-        })
-        .finally(() => {
-            document.getElementById("roleModal").style.display = "none";
-        });
-    }
-</script>
 <style>
     /* Background video */
     #backgroundVideo {
@@ -328,4 +189,4 @@
     }
 </style>
 
-{% endblock %}
+<script type="module" src="/static/js/users.js"></script>

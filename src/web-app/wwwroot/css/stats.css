@@ -1,0 +1,817 @@
+/* Stats page. Dark cards over the background video, to match the rest of the site.
+   The Safe / Threat colours are a pair checked for colour-blind safety and contrast on the card surface. */
+.stats-page {
+    color-scheme: dark;
+    --surface: rgba(26, 26, 25, 0.92);
+    --surface-solid: #1a1a19;
+    --surface-raised: #242423;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --gridline: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --series-safe: #3987e5;
+    --series-threat: #d95926;
+    --status-good: #0ca30c;
+    --status-warning: #fab219;
+    --status-critical: #d03b3b;
+    --accent: #ffcc00; /* the site's yellow */
+    color: var(--text-primary);
+}
+
+/* Elements hidden by the script stay hidden, even where a rule below sets display */
+.stats-page [hidden] {
+    display: none !important;
+}
+
+/* Darker than other pages so the cards read clearly over the video */
+.stats-page .overlay {
+    background: rgba(0, 0, 0, 0.72);
+}
+
+.stats-container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    /* Starts just below the site's fixed navigation bar. stats.js measures the bar, which stacks into
+       a much taller block on phones; .main-content already adds 30px above this. */
+    padding: calc(var(--site-header-height, 64px) - 16px) 24px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.stats-container.is-refreshing .kpi-row,
+.stats-container.is-refreshing .stats-grid {
+    opacity: 0.55;
+    transition: opacity 0.2s ease;
+}
+
+/* ---------- Page header ---------- */
+.stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+}
+
+.stats-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.stats-subtitle {
+    margin-top: 4px;
+    color: var(--text-secondary);
+    font-size: 15px;
+}
+
+.stats-updated {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--status-good);
+    animation: live-pulse 2s ease-out infinite;
+}
+
+.stats-updated.is-stale .live-dot {
+    background: var(--text-muted);
+    animation: none;
+}
+
+@keyframes live-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(12, 163, 12, 0.6); }
+    70% { box-shadow: 0 0 0 7px rgba(12, 163, 12, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(12, 163, 12, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .live-dot { animation: none; }
+}
+
+/* ---------- Toolbar ---------- */
+.stats-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.range-picker {
+    display: inline-flex;
+    padding: 4px;
+    gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.range-btn {
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 14px;
+    padding: 7px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+.range-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+.range-btn[aria-pressed="true"] {
+    background: var(--accent);
+    color: #0b0b0b;
+    font-weight: 700;
+}
+
+.ghost-btn,
+.view-toggle {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 13px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.ghost-btn:hover,
+.view-toggle:hover {
+    background: rgba(255, 255, 255, 0.10);
+}
+
+.ghost-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.view-toggle[aria-pressed="true"] {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.range-btn:focus-visible,
+.ghost-btn:focus-visible,
+.view-toggle:focus-visible,
+.sort-btn:focus-visible,
+.stats-page svg:focus-visible,
+.species-row:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* ---------- Cards ---------- */
+.stats-card,
+.kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    backdrop-filter: blur(6px);
+    min-width: 0;
+}
+
+.stats-card {
+    padding: 20px;
+}
+
+/* Chart cards stretch to the tallest card in their row; the column charts grow to fill them */
+.chart-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin-bottom: 16px;
+}
+
+.card-head h2 {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.card-note {
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.card-tools {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+}
+
+/* ---------- Summary tiles ---------- */
+.kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.kpi {
+    padding: 18px 20px;
+}
+
+.kpi-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 400;
+}
+
+.kpi-value {
+    margin-top: 6px;
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+/* The last detection is a name, not a number */
+.kpi-value-text {
+    font-size: 22px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.kpi-note {
+    margin-top: 6px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* ---------- Grid ---------- */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.span-2 { grid-column: span 2; }
+.span-3 { grid-column: span 3; }
+
+/* ---------- Legend and keys ---------- */
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    list-style: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.legend li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.key {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.key-safe { background: var(--series-safe); }
+.key-threat { background: var(--series-threat); }
+
+/* ---------- Charts ---------- */
+.chart {
+    position: relative;
+}
+
+.column-chart {
+    flex: 1;
+    min-height: 260px;
+}
+
+/* Drawn to the box's size, so it is kept out of the layout: otherwise a chart drawn tall would
+   stop its card shrinking again */
+.column-chart > svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.chart svg {
+    display: block;
+    overflow: visible;
+}
+
+.gridline {
+    stroke: var(--gridline);
+    stroke-width: 1;
+}
+
+.axis-baseline {
+    stroke: var(--baseline);
+    stroke-width: 1;
+}
+
+.tick-label {
+    fill: var(--text-muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.bar-safe { fill: var(--series-safe); }
+.bar-threat { fill: var(--series-threat); }
+
+.column-band {
+    fill: rgba(255, 255, 255, 0.06);
+}
+
+.hit {
+    fill: transparent;
+    cursor: crosshair;
+}
+
+.chart-tooltip {
+    position: absolute;
+    z-index: 5;
+    min-width: 150px;
+    padding: 10px 12px;
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    font-size: 13px;
+    pointer-events: none;
+}
+
+.tip-title {
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+}
+
+.tip-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 3px;
+}
+
+.tip-row strong {
+    min-width: 24px;
+    font-variant-numeric: tabular-nums;
+}
+
+.tip-total {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.empty {
+    padding: 32px 0;
+    color: var(--text-muted);
+    text-align: center;
+    font-size: 14px;
+}
+
+/* Table view swaps the chart for its numbers */
+.chart-table {
+    display: none;
+}
+
+.chart-card.show-table .chart {
+    display: none;
+}
+
+.chart-card.show-table .chart-table {
+    display: block;
+}
+
+.chart-card.show-table .legend {
+    visibility: hidden;
+}
+
+/* ---------- Species bars ---------- */
+.species-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    list-style: none;
+}
+
+.species-row {
+    border-radius: 6px;
+    padding: 2px 4px;
+    margin: 0 -4px;
+    cursor: default;
+}
+
+.species-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.species-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.species-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.species-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bar-fill {
+    display: flex;
+    gap: 2px;
+    height: 10px;
+    width: calc(var(--ratio) * (100% - 40px));
+    min-width: 4px;
+}
+
+.seg {
+    height: 100%;
+    min-width: 2px;
+}
+
+.seg:last-child {
+    border-radius: 0 4px 4px 0;
+}
+
+.seg-safe { background: var(--series-safe); }
+.seg-threat { background: var(--series-threat); }
+
+.bar-value {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.tag {
+    display: inline-block;
+    padding: 1px 7px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+/* ---------- Gate (live from the Jetson) ---------- */
+.connection-pill,
+.position {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.connection-pill {
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.connection-pill::before,
+.position::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.connection-pill.connected::before { background: var(--status-good); }
+.connection-pill.connecting::before { background: var(--status-warning); }
+.connection-pill.error::before { background: var(--status-critical); }
+
+.position.is-open::before { background: var(--status-good); }
+.position.is-moving::before { background: var(--accent); }
+.position.is-unknown::before { display: none; }
+
+.gate-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.fact {
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    min-width: 0;
+}
+
+.fact dt {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.fact dd {
+    margin: 0;
+}
+
+.fact-value,
+.position {
+    margin-top: 4px;
+    font-size: 20px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.fact-sub {
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+/* Readings the Jetson isn't sending right now */
+.unavailable {
+    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 400;
+}
+
+/* ---------- Tables ---------- */
+.search-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: min(280px, 100%);
+    padding: 7px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+}
+
+.search-field:focus-within {
+    border-color: var(--accent);
+}
+
+.search-field svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.search-field input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 14px;
+    outline: none;
+}
+
+.table-scroll {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.data-table th {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--baseline);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 400;
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.data-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--gridline);
+    vertical-align: middle;
+}
+
+.data-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.data-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.data-table .id {
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.sort-btn {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    cursor: pointer;
+    padding: 0;
+}
+
+.sort-btn:hover {
+    color: var(--text-primary);
+}
+
+.sort-btn::after {
+    content: " ↕";
+    opacity: 0.5;
+}
+
+th[aria-sort="ascending"] .sort-btn,
+th[aria-sort="descending"] .sort-btn {
+    color: var(--text-primary);
+}
+
+th[aria-sort="ascending"] .sort-btn::after {
+    content: " ↑";
+    opacity: 1;
+}
+
+th[aria-sort="descending"] .sort-btn::after {
+    content: " ↓";
+    opacity: 1;
+}
+
+.cell-main {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.cell-sub {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.dot-safe { background: var(--series-safe); }
+.dot-threat { background: var(--series-threat); }
+
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.pagination-info {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.stats-footnote {
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.stats-footnote strong {
+    color: var(--text-secondary);
+}
+
+/* ---------- Smaller screens ---------- */
+@media (max-width: 1279px) {
+    .kpi-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .stats-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .span-2,
+    .span-3 {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 600px) {
+    .stats-container {
+        gap: 16px;
+        padding: calc(var(--site-header-height, 64px) - 14px) 12px 28px;
+    }
+
+    .stats-header h1 {
+        font-size: 26px;
+    }
+
+    .kpi-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .kpi {
+        padding: 14px;
+    }
+
+    .kpi-value {
+        font-size: 28px;
+    }
+
+    .kpi-value-text {
+        font-size: 18px;
+    }
+
+    .stats-card {
+        padding: 16px;
+    }
+
+    .range-picker {
+        width: 100%;
+    }
+
+    .range-btn {
+        flex: 1;
+        padding: 7px 6px;
+    }
+
+    .column-chart {
+        min-height: 220px;
+    }
+
+    .gate-facts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .fact {
+        padding: 12px;
+    }
+
+    /* Fewer log columns on phones: when, animal and status; the rest are in the CSV export */
+    .data-table .col-id,
+    .data-table .col-type {
+        display: none;
+    }
+}

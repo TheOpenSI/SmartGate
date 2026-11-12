@@ -1,0 +1,25 @@
+{
+  "name": "smartgate-web-app",
+  "version": "1.0.0",
+  "description": "SmartGate web dashboard (Node.js + Fastify + Socket.IO)",
+  "private": true,
+  "type": "module",
+  "main": "app.js",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js"
+  },
+  "license": "GPL-3.0",
+  "dependencies": {
+    "@fastify/cookie": "^11.1.3",
+    "@fastify/oauth2": "^8.3.2",
+    "@fastify/session": "^11.1.5",
+    "@fastify/static": "^10.1.7",
+    "fastify": "^5.12.7",
+    "pg": "^8.23.1",
+    "socket.io": "^4.8.4"
+  }
+}

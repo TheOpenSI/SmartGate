@@ -1,15 +1,8 @@
-﻿{% extends "layout.html" %}
-{% set page = "alerts" %}
-
-{% block title %}Alerts{% endblock %}
-
-{% block content %}
-
-    <!-- Main Content Wrapper -->
+﻿    <!-- Main Content Wrapper -->
     <div class="main-content">
         <section class="background">
             <video autoplay muted loop id="backgroundVideo">
-                <source src="../static/NewFolder/bakground_video.mp4" type="video/mp4">
+                <source src="/static/videos/background_video.mp4" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
             <div class="overlay"></div>
@@ -18,8 +11,9 @@
         <section class="alerts-container">
             <div class="alert-inner-wrapper">
                 <div class="alerts-actions" style="text-align: right; margin-bottom: 15px;">
-                    <button onclick="hideSelectedAlerts()" class="action-btn">Hide Alerts</button>
-                    <button onclick="removeSelectedAlerts()" class="action-btn">Remove Alerts</button>
+                    <button id="hideAlerts" class="action-btn">Hide Alerts</button>
+                    <button id="removeAlerts" class="action-btn">Remove Alerts</button>
+                    <button id="showHiddenAlerts" class="action-btn">Show Hidden</button>
                 </div>
 
                 <table class="alerts-table">
@@ -33,55 +27,11 @@
                     </tr>
                     </thead>
                     <tbody>
-                    {% for alert in alert_data %}
-                        <tr>
-                            <td>
-                                <input type="checkbox" class="alert-checkbox" value="{{ alert.alert_no }}" name="selected_alerts">
-                            </td>
-                            <td>{{ alert.alert_no }}</td>
-                            <td>{{ alert.alert_desc }}</td>
-                            <td class="alert-level {{ alert.alert_level | lower }}">{{ alert.alert_level }}</td>
-                            <td>{{ alert.date_and_time }}</td>
-                        </tr>
-                    {% endfor %}
                     </tbody>
                 </table>
             </div>
         </section>
     </div>
-
-    <script>
-        function updateAlertsTable(alerts) {
-            const tbody = document.querySelector(".alerts-table tbody");
-            if (!tbody) {
-                console.error("Couldn't find alerts table body");
-                return;
-            }
-
-            tbody.innerHTML = "";
-
-            if (!Array.isArray(alerts)) {
-                console.warn("Alerts data is invalid:", alerts);
-                return;
-            }
-
-            alerts.forEach(alert => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                <td><input type="checkbox" class="alert-checkbox" value="${alert.alert_no}" name="selected_alerts"></td>
-                <td>${alert.alert_no}</td>
-                <td>${alert.alert_desc}</td>
-                <td class="alert-level ${alert.alert_level.toLowerCase()}">${alert.alert_level}</td>
-                <td>${new Date(alert.date_and_time).toLocaleString()}</td>
-            `;
-                tbody.appendChild(row);
-            });
-        }
-
-        document.addEventListener("DOMContentLoaded", function () {
-            console.log("DOM fully loaded and parsed");
-        });
-    </script>
 
     <style>
         .main-content {
@@ -147,17 +97,18 @@
             background-color: rgba(255, 255, 255, 0.1);
         }
 
-        .alert-level.high {
+        /* Alert levels stored in the database: critical, warning, info */
+        .alert-level.critical {
             color: #ff4d4d;
             font-weight: bold;
         }
 
-        .alert-level.medium {
+        .alert-level.warning {
             color: #ffc107;
             font-weight: bold;
         }
 
-        .alert-level.low {
+        .alert-level.info {
             color: #28a745;
             font-weight: bold;
         }
@@ -172,7 +123,7 @@
             width: 100%;
             max-width: 1200px;
         }
-        
+
         .alerts-actions {
             display: flex;
             justify-content: flex-start;
@@ -197,4 +148,4 @@
 
     </style>
 
-{% endblock %}
+    <script type="module" src="/static/js/alerts.js"></script>

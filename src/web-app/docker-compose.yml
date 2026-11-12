@@ -9,17 +9,31 @@ services:
       - "8000:8000"  # Expose web app on port 8000
     environment:
       - DATABASE_URL=postgresql://admin:smartgate@postgres:5432/smartgatedb
-      - ENV=development
+      # The values below come from the .env file next to this one (see .env.example)
+      - ENV=${ENV:-development}
+      - SESSION_SECRET=${SESSION_SECRET:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - ADMIN_USERS=${ADMIN_USERS:-}
+      - JETSON_LIVE_URL=${JETSON_LIVE_URL:-}
+      - JETSON_LIVE_SERVICE=${JETSON_LIVE_SERVICE:-}
+      - JETSON_GATE_NO=${JETSON_GATE_NO:-}
+      - JETSON_TOKEN=${JETSON_TOKEN:-}
     depends_on:
-      - postgres
-    stdin_open: true  # Keep STDIN open for interactive mode
-    tty: true         # Allocate a pseudo-TTY
+      postgres:
+        condition: service_healthy
+    # Lets the container reach a Jetson service on this same machine (see JETSON_LIVE_URL)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Pages, CSS and browser JS are shared with the container, so edits show on refresh.
+    # Changes to app.js or controllers/ need: docker compose restart sgwebimage
     volumes:
-      - .:/SmartGate
+      - ./frontend:/SmartGate/frontend:ro
+      - ./wwwroot:/SmartGate/wwwroot:ro
     networks:
       - sgnet
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 5s
       timeout: 5s
       retries: 3

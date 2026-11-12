@@ -2,7 +2,7 @@
     "model": {
         "path": "../models/marsupial_16s.engine",
         "classes": "../models/classes/marsupial_16s.txt",
-        "confidence": 0.5
+        "confidence": 0.6
     },
     "rules": [
         {
