@@ -1,29 +1,20 @@
-# Use the official Python Docker image (OS: Debian)
-FROM python:3.9.22-bookworm
-
-# Custom command to enter the postgresql database
-# Note: This command is not executed in the container, but it is a suggestion for the user to run in their terminal.
-# RUN echo "alias connsgdb='psql -h postgres -U admin -d smartgatedb'" >> ~/.bashrc
+# Official Node.js LTS image. It is multi-architecture, so the same Dockerfile
+# builds on a PC (amd64) and on the Jetson Orin Nano (arm64).
+FROM node:24.18.0-bookworm-slim
 
 # Set the working directory inside the container
 WORKDIR /SmartGate
 
-COPY requirements.txt /SmartGate/
+# Install only the packages listed in package-lock.json (no dev tools)
+COPY package.json package-lock.json /SmartGate/
+RUN npm ci --omit=dev && npm cache clean --force
+
 # Copy the rest of the application code to the container
 COPY . /SmartGate/
 
-# Update, upgrade and install system dependencies
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y sudo nano libdbus-1-dev neofetch postgresql openssh-client openssh-server neovim && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Run as the image's built-in non-root user
+USER node
 
-# Install the required Python packages from the requirements.txt file
-RUN pip install --no-cache-dir -r /SmartGate/requirements.txt
+EXPOSE 8000
 
-# Expose both Uvicorn (8000) & PostgreSQL (5432)
-EXPOSE 8000 5432
-
-# start the shell
-ENTRYPOINT ["python", "app.py"]
+CMD ["node", "app.js"]

@@ -36,6 +36,7 @@ Type=simple
 WorkingDirectory=$PROJECT_DIR
 #Belt-and-braces: clear out any stale container left over from a previous boot/crash before starting.
 ExecStartPre=-/usr/bin/docker rm -f $SERVICE_NAME
+ExecStartPre=$PROJECT_DIR/setup/sgate_boot.sh
 ExecStart=/usr/bin/docker run --rm --name $SERVICE_NAME \\
     --privileged --runtime nvidia --network host \\
     --device /dev/video0 \\
@@ -52,6 +53,7 @@ ExecStart=/usr/bin/docker run --rm --name $SERVICE_NAME \\
     -v /home/nvidia/tegra_multimedia_api:/home/nvidia/tegra_multimedia_api \\
     -v $MODELS_DIR:/app/models \\
     -e JETSON_MODEL_NAME=JETSON_ORIN_NANO \\
+    -v $PROJECT_DIR:/app \\
     $IMAGE_NAME \\
     python3 src/main/live_detection.py
 #docker stop sends SIGTERM to the container's PID 1 - live_detection.py catches this and runs

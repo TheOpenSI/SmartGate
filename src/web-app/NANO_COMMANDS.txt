@@ -1,0 +1,202 @@
+SmartGate on the Jetson Orin Nano - live camera, detections and gate control
+============================================================================
+
+WHAT TO PUT ON THE USB (on the laptop)
+--------------------------------------
+1. The folder:  SmartGate-2026-1\src\web-app
+2. ONLY if the Nano runs the original SmartGate code (see Part 0), also a new folder
+   called "jetson-update" with these two files copied into it:
+     SmartGate-2026-1\setup\update_running_container.sh
+     SmartGate-2026-1\src\main\http_server.py
+
+Before you start on the Nano:
+- SmartGate must be running (the camera feed works at http://<nano-ip>:8080).
+- The first time, the Nano needs internet (Part 2 downloads about 1 GB)
+  and about 1.5 GB of free space.
+
+Type these commands in a terminal on the Nano.
+Replace <USB-NAME> with the name shown by:   ls /media/$USER/
+
+
+PART 0 - WHICH SOFTWARE DOES THE NANO RUN?
+==========================================
+curl -s http://localhost:8080/api/status
+
+- It prints JSON starting with {"door": ...
+      -> the Nano runs smartgate-nano (the dashboard with Auto / Manual and Snapshot).
+         SKIP PART 1. In Part 2 step 2 use:  SERVICE=smartgate_nano
+- It prints an HTML error page / "File resource not found"
+      -> the Nano runs the original SmartGate code.
+         Do Part 1. In Part 2 step 2 use:    SERVICE=http_server
+
+
+PART 1 - UPDATE THE JETSON (original SmartGate code only - skip on smartgate-nano)
+==================================================================================
+This lets the Jetson send its animal detections and PIR / Hall readings to the website,
+fixes its /status on the Orin Nano, and adds a "stop" command for the gate motor.
+It backs up the current files first and changes nothing if something looks wrong.
+smartgate-nano already does all of this, so don't run it there.
+
+bash "/media/$USER/<USB-NAME>/jetson-update/update_running_container.sh"
+    (it ends with "[+] Done." and prints an undo command - write that down)
+
+Restart SmartGate so it uses the update:
+    If SmartGate runs as a service:   sudo systemctl restart smartgate
+    If you started it with make run:  press Ctrl+C in that terminal, then run:
+                                      python3 src/main/live_detection.py
+
+Check it worked:
+curl -s http://localhost:8080/detections
+    (should print something starting with {"started_at": ...)
+
+
+PART 2 - THE WEBSITE
+====================
+
+STEP 1 - Copy the website from the USB
+--------------------------------------
+mkdir -p ~/web-app
+cp -r "/media/$USER/<USB-NAME>/web-app/." ~/web-app/
+cd ~/web-app
+df -h ~
+    (check "Avail" is at least 1.5G)
+
+If "ls /media/$USER/" shows nothing, mount the USB yourself:
+lsblk
+    (find the USB, usually sda1)
+sudo mount /dev/sda1 /mnt
+    (then use /mnt instead of "/media/$USER/<USB-NAME>" in the commands above and in Part 1,
+     and run "sudo umount /mnt" when you're finished with the USB)
+
+
+STEP 2 - Settings: the Jetson's port 8080, and who can control the gate
+-----------------------------------------------------------------------
+SERVICE=smartgate_nano
+    (or SERVICE=http_server if Part 0 said the Nano runs the original SmartGate code)
+
+[ -f .env ] || cp .env.example .env
+grep -q '^JETSON_LIVE_SERVICE=' .env || printf '\nJETSON_LIVE_SERVICE=\n' >> .env
+sed -i "s|^JETSON_LIVE_SERVICE=.*|JETSON_LIVE_SERVICE=$SERVICE|" .env
+sed -i 's|^JETSON_LIVE_URL=.*|JETSON_LIVE_URL=http://host.docker.internal:8080|' .env
+sed -i 's|^ADMIN_USERS=.*|ADMIN_USERS=Dummy|' .env
+grep -E '^(JETSON_|ADMIN_)' .env
+    Must show (with your SERVICE):
+    JETSON_LIVE_URL=http://host.docker.internal:8080
+    JETSON_LIVE_SERVICE=smartgate_nano
+    ADMIN_USERS=Dummy
+
+smartgate-nano only: if its config/config.json has  "token": "..."  under "server",
+put the same token in .env so the gate buttons work:
+grep -q '^JETSON_TOKEN=' .env || printf '\nJETSON_TOKEN=\n' >> .env
+sed -i 's|^JETSON_TOKEN=.*|JETSON_TOKEN=<the token>|' .env
+
+WARNING: ADMIN_USERS=Dummy makes the DUMMY LOGIN button an admin, so ANYONE who can open the
+website can open and close the real gate. Only use it for testing on your own network.
+
+
+STEP 3 - Start the website
+--------------------------
+sudo docker compose up --build -d
+    (if you get "'compose' is not a docker command", use: sudo docker-compose up --build -d
+     and use "docker-compose" instead of "docker compose" in the commands below too)
+
+
+STEP 4 - Check it is connected to the Jetson
+--------------------------------------------
+sudo docker compose ps
+    (both containers should say "healthy" - if not, wait a few seconds and run it again)
+
+sudo docker compose logs sgwebimage | grep -i jetson
+    (should end with: Jetson live connection: connected)
+
+
+STEP 5 - View it on your laptop
+-------------------------------
+hostname -I
+    (lists the Nano's addresses - use the one on your home network, e.g. 192.168.1.x,
+     NOT 172.17.0.1 (Docker) or 192.168.55.1 (USB cable))
+
+On the laptop's browser open:   http://<nano-ip>:8000/gates
+The laptop must be on the same network as the Nano.
+
+
+USING IT
+========
+- Click DUMMY LOGIN (top right) to log in as the admin.
+- LIVE STREAM page: the Jetson's camera, the gate status, the latest animal it detected
+  and Jetson health. On smartgate-nano also: frame rate and viewers, Auto / Manual mode,
+  the state machine, uptime, GPU and disk, and a Gate Analytics section (today / 7 / 30 days:
+  totals, detections by hour and by species, recent activity).
+- Gate: "Open" / "Close" move the REAL gate (you'll be asked to confirm).
+  The motor runs until the Hall sensor at that end triggers. "Stop" halts the motor at once.
+  The Jetson's rules can still move the gate again when it next detects an animal.
+- Mode (smartgate-nano): Auto lets the rules move the gate; Manual holds it for the buttons.
+- Snapshot (smartgate-nano): opens a still photo from the camera.
+- DASHBOARD / STATS: each animal is counted once per visit, and gate opens / closes are counted.
+- ALERTS: "Gate #1 Opened / Closed", commands sent, and a warning for animals the rules close
+  the gate for (e.g. Red Fox).
+
+
+LATER
+=====
+After the Nano restarts, start the website again:
+cd ~/web-app && sudo docker compose up -d
+
+Stop the website:
+cd ~/web-app && sudo docker compose down
+
+Undo the Jetson update (Part 1) - use the backup folder it printed:
+bash "/media/$USER/<USB-NAME>/jetson-update/update_running_container.sh" --restore ~/smartgate-backup-<date-time>
+    then restart SmartGate as in Part 1.
+
+If you ever rebuild the Jetson image (make build), run Part 1 again.
+
+
+IF SOMETHING IS WRONG
+=====================
+Part 1 says "No running SmartGate container found":
+    Start SmartGate first. If it is running, find its ID with:  sudo docker ps
+    and add it to the end of the Part 1 command.
+
+Part 1 says "doesn't look like the expected version":
+    Your Jetson's code is different from what the update expects. Nothing was changed.
+
+Log says "JETSON_LIVE_URL is not set":
+    .env is missing or in the wrong folder. Run steps 2 and 3 again from ~/web-app.
+
+Log says "JETSON_LIVE_SERVICE must be ...":
+    Typo in .env - it must be exactly smartgate_nano (or http_server). Run steps 2 and 3 again.
+
+Page says "Disconnected" with "The Jetson answered /api/status with HTTP 404":
+    The Nano runs the original SmartGate code, not smartgate-nano. Use SERVICE=http_server
+    in step 2 (and do Part 1), then step 3 again.
+
+Gate buttons say "The Jetson wants an access token":
+    The Nano's config.json sets server.token. Put it in .env as JETSON_TOKEN (step 2), then step 3.
+
+Page says "Disconnected":
+    Check SmartGate is running:
+    curl -s --max-time 3 http://localhost:8080/status
+    If that works but the page is still disconnected, use the Nano's own IP instead:
+    sed -i 's|^JETSON_LIVE_URL=.*|JETSON_LIVE_URL=http://<nano-ip>:8080|' .env
+    sudo docker compose up --build -d
+
+Gate buttons are grey:
+    Log in with DUMMY LOGIN, and check ADMIN_USERS=Dummy is in .env (step 2, then step 3).
+    The message under the buttons says what is missing.
+
+"Stop" says "The Jetson refused the command (HTTP 400)":
+    The Jetson update (Part 1) isn't installed or SmartGate wasn't restarted after it.
+
+Animal recognition and PIR show "Unavailable":
+    Same as above - do Part 1 and restart SmartGate.
+
+Connected, but the video is black or frozen:
+    Open http://<nano-ip>:8080/stream on the laptop. If it is frozen there too,
+    the problem is on the Jetson side, not the website.
+
+Temperature shows "Unavailable":
+    The Jetson didn't find a temperature sensor it knows. Everything else still works.
+
+Works on the Nano but not from the laptop:
+    Wrong IP, or the laptop is on a different network.

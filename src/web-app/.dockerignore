@@ -1,0 +1,8 @@
+# Installed inside the image by "npm ci"
+node_modules/
+npm-debug.log*
+
+# Secrets are passed in by docker-compose.yml, never baked into the image
+.env
+
+*.docx

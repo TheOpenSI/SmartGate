@@ -13,7 +13,12 @@ body {
     min-height: 100vh;
 }
 
-/* Ensure Content Pushes Footer Down */
+/* Ensure Content Pushes Footer Down: the page area fills any spare height, so on short pages
+   (like the dashboard) the footer still sits at the bottom of the window */
+main {
+    flex-grow: 1;
+}
+
 .main-content {
     flex-grow: 1; /* Pushes footer to bottom */
     padding-top: 30px; /* Ensures content isn't hidden under fixed header */
@@ -34,14 +39,43 @@ header {
     z-index: 1000;
 }
 
-/* Logo */
+/* Logo (links back to the dashboard): the OpenSI logo on a white tile, then the name */
 .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-decoration: none;
+}
+
+.logo-badge {
+    display: flex;
+    background-color: #fff;
+    border-radius: 6px;
+    padding: 3px 8px;
+}
+
+.logo-badge img {
+    display: block;
+    height: 30px;
+    width: auto;
+}
+
+.logo-text {
+    color: white;
     font-size: 20px;
     font-weight: bold;
-    color: green;
+    letter-spacing: 2px;
+    white-space: nowrap;
 }
 
 /* Navigation */
+/* The logged-out login area adds "nav { margin-left: 125px }" (main_controller.js), which lined the
+   menu up with the old text logo. With the wider logo it squeezed the menu onto two lines, so the
+   menu now sits evenly between the logo and the buttons, as it does when logged in. */
+header nav {
+    margin-left: 0;
+}
+
 nav ul {
     list-style: none;
     display: flex;
@@ -348,7 +382,7 @@ footer {
 /* Footer Container */
 .footer-container {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     max-width: 1000px;
     margin: 0 auto;

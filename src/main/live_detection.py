@@ -9,7 +9,7 @@ import io_control as io
 from enum import Enum, auto
 import threading
 
-from http_server import Initialize_Server, Shutdown_Server, set_latest_frame, set_door_controller_reference, Fetch_Queued_Command
+from http_server import Initialize_Server, Shutdown_Server, set_latest_frame, set_door_controller_reference, Fetch_Queued_Command, set_latest_detections
 from ruleset_decider import RulesetDecider
 from gate_states import State
 from json_config import JsonConfig
@@ -143,6 +143,7 @@ def main():
 
             #Perform inference
             detections, t = model.Inference(img)
+            set_latest_detections(detections, t, decider)  #Detections for the website (http_server.py)
 
             #Update the latest_frame for streaming
             set_latest_frame(img.copy())

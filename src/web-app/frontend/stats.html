@@ -1,242 +1,199 @@
-{% extends "layout.html" %}
+    <link rel="stylesheet" href="/static/css/stats.css" />
 
-{% block title %}Stats{% endblock %}
-
-{% block content %}
-    <div class="main-content">
+    <div class="main-content stats-page">
         <section class="background">
             <video autoplay muted loop id="backgroundVideo">
-                <source src="../static/NewFolder/bakground_video.mp4" type="video/mp4">
+                <source src="/static/videos/background_video.mp4" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
             <div class="overlay"></div>
         </section>
-        {# <!-- This is where the content goes --> #}
-        <div class="table-histo-container">
-            <div class="gates-animal-table">
-                <div class="gates-table"></div>
-                <div class="animals-table"></div>
+
+        <div class="stats-container" id="stats">
+            <div class="stats-header">
+                <div>
+                    <h1>Dashboard</h1>
+                    <p class="stats-subtitle">What the SmartGate cameras have detected, and how the gates are doing</p>
+                </div>
+                <p class="stats-updated" id="statsUpdated">
+                    <span class="live-dot" aria-hidden="true"></span><span id="statsUpdatedText">Loading…</span>
+                </p>
             </div>
-            <div class="histo-stats-container">
-                <div id="animal-count-histo"></div>
-                <div class="stats-table"></div>
+
+            <!-- The time range applies to everything except the gate and the last detection -->
+            <div class="stats-toolbar">
+                <div class="range-picker" role="group" aria-label="Time range">
+                    <button type="button" class="range-btn" data-range="24h">24 hours</button>
+                    <button type="button" class="range-btn" data-range="7d">7 days</button>
+                    <button type="button" class="range-btn" data-range="30d">30 days</button>
+                    <button type="button" class="range-btn" data-range="all">All time</button>
+                </div>
+                <a class="ghost-btn" id="exportCsv" href="#" download="smartgate-detections.csv">Export CSV</a>
             </div>
+
+            <!-- Summary -->
+            <section class="kpi-row" aria-label="Summary">
+                <article class="kpi">
+                    <h2 class="kpi-label">Animals detected</h2>
+                    <p class="kpi-value" id="kpiDetections">–</p>
+                    <p class="kpi-note" id="kpiDetectionsNote"></p>
+                </article>
+                <article class="kpi">
+                    <h2 class="kpi-label"><span class="key key-threat" aria-hidden="true"></span>Threats</h2>
+                    <p class="kpi-value" id="kpiThreats">–</p>
+                    <p class="kpi-note" id="kpiThreatsNote"></p>
+                </article>
+                <article class="kpi">
+                    <h2 class="kpi-label">Endangered</h2>
+                    <p class="kpi-value" id="kpiEndangered">–</p>
+                    <p class="kpi-note" id="kpiEndangeredNote"></p>
+                </article>
+                <article class="kpi">
+                    <h2 class="kpi-label">Species seen</h2>
+                    <p class="kpi-value" id="kpiSpecies">–</p>
+                    <p class="kpi-note" id="kpiSpeciesNote"></p>
+                </article>
+                <article class="kpi">
+                    <h2 class="kpi-label">Last detection</h2>
+                    <p class="kpi-value kpi-value-text" id="kpiLast">–</p>
+                    <p class="kpi-note" id="kpiLastNote"></p>
+                </article>
+            </section>
+
+            <div class="stats-grid">
+                <section class="stats-card chart-card span-2" aria-labelledby="timelineTitle">
+                    <div class="card-head">
+                        <div>
+                            <h2 id="timelineTitle">Detections over time</h2>
+                            <p class="card-note" id="timelineNote"></p>
+                        </div>
+                        <div class="card-tools">
+                            <ul class="legend">
+                                <li><span class="key key-safe" aria-hidden="true"></span>Safe</li>
+                                <li><span class="key key-threat" aria-hidden="true"></span>Threat</li>
+                            </ul>
+                            <button type="button" class="view-toggle" aria-pressed="false">Table view</button>
+                        </div>
+                    </div>
+                    <div class="chart column-chart" id="timelineChart"></div>
+                    <div class="chart-table" id="timelineTable"></div>
+                </section>
+
+                <section class="stats-card chart-card" aria-labelledby="speciesTitle">
+                    <div class="card-head">
+                        <div>
+                            <h2 id="speciesTitle">Detections by species</h2>
+                            <p class="card-note">Most detected first</p>
+                        </div>
+                        <div class="card-tools">
+                            <ul class="legend">
+                                <li><span class="key key-safe" aria-hidden="true"></span>Safe</li>
+                                <li><span class="key key-threat" aria-hidden="true"></span>Threat</li>
+                            </ul>
+                            <button type="button" class="view-toggle" aria-pressed="false">Table view</button>
+                        </div>
+                    </div>
+                    <div class="chart" id="speciesChart"></div>
+                    <div class="chart-table" id="speciesTable"></div>
+                </section>
+
+                <section class="stats-card chart-card" aria-labelledby="hoursTitle">
+                    <div class="card-head">
+                        <div>
+                            <h2 id="hoursTitle">Busiest times of day</h2>
+                            <p class="card-note">Detections by hour, in your time zone</p>
+                        </div>
+                        <div class="card-tools">
+                            <button type="button" class="view-toggle" aria-pressed="false">Table view</button>
+                        </div>
+                    </div>
+                    <div class="chart column-chart" id="hoursChart"></div>
+                    <div class="chart-table" id="hoursTable"></div>
+                </section>
+
+                <!-- The Jetson's gate: live readings (as on the Live Stream page) and its saved opens / closes -->
+                <section class="stats-card span-2" aria-labelledby="gateTitle">
+                    <div class="card-head">
+                        <div>
+                            <h2 id="gateTitle">Gate</h2>
+                            <p class="card-note" id="gateNote">Live from the Jetson</p>
+                        </div>
+                        <div class="card-tools">
+                            <span class="connection-pill" id="gateConnection">Connecting</span>
+                            <a class="ghost-btn" href="/gates">Live Stream</a>
+                        </div>
+                    </div>
+                    <dl class="gate-facts">
+                        <div class="fact fact-main">
+                            <dt>Gate position</dt>
+                            <dd><span class="position" id="gatePosition">–</span></dd>
+                            <dd class="fact-sub" id="gateMotor"></dd>
+                        </div>
+                        <div class="fact">
+                            <dt>Opens</dt>
+                            <dd class="fact-value" id="gateOpens">–</dd>
+                            <dd class="fact-sub">Since records began</dd>
+                        </div>
+                        <div class="fact">
+                            <dt>Closes</dt>
+                            <dd class="fact-value" id="gateCloses">–</dd>
+                            <dd class="fact-sub">Since records began</dd>
+                        </div>
+                        <div class="fact">
+                            <dt>Mode</dt>
+                            <dd class="fact-value" id="gateMode">–</dd>
+                        </div>
+                        <div class="fact">
+                            <dt>Motion sensor</dt>
+                            <dd class="fact-value" id="gateMotion">–</dd>
+                        </div>
+                        <div class="fact">
+                            <dt>Last camera detection</dt>
+                            <dd class="fact-value" id="gateDetection">–</dd>
+                            <dd class="fact-sub" id="gateDetectionSub"></dd>
+                        </div>
+                        <div class="fact">
+                            <dt>CPU load</dt>
+                            <dd class="fact-value" id="jetsonCpu">–</dd>
+                        </div>
+                        <div class="fact">
+                            <dt>Memory</dt>
+                            <dd class="fact-value" id="jetsonMemory">–</dd>
+                        </div>
+                        <div class="fact">
+                            <dt>Temperature</dt>
+                            <dd class="fact-value" id="jetsonTemp">–</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="stats-card span-3" aria-labelledby="logTitle">
+                    <div class="card-head">
+                        <div>
+                            <h2 id="logTitle">Detection log</h2>
+                            <p class="card-note" id="logNote"></p>
+                        </div>
+                        <label class="search-field">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                            <input type="search" id="logSearch" placeholder="Search animal or type" aria-label="Search the detection log" autocomplete="off">
+                        </label>
+                    </div>
+                    <div class="table-scroll" id="logTable"></div>
+                    <div class="pagination">
+                        <p class="pagination-info" id="logRange" aria-live="polite"></p>
+                        <div class="pagination-buttons">
+                            <button type="button" class="ghost-btn" id="logPrev">Previous</button>
+                            <button type="button" class="ghost-btn" id="logNext">Next</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <p class="stats-footnote">
+                <strong>Safe</strong> animals are ones the gate lets through. <strong>Threats</strong> are animals the
+                gate is kept closed for. Times are shown in your own time zone.
+            </p>
         </div>
     </div>
-    <script type="text/javascript" src="https://unpkg.com/tabulator-tables/dist/js/tabulator.min.js"></script>
-    <script src="https://cdn.plot.ly/plotly-3.0.1.min.js" charset="utf-8"></script>
-    <script>
-        // Dummy gate data (you would fetch this from your FastAPI endpoint or WebSocket later)
-        var tableData = [
-            {gate_no: 1, gate_status: "Open", gate_no_opens: 15, gate_no_closes: 14},
-            {gate_no: 2, gate_status: "Closed", gate_no_opens: 8, gate_no_closes: 9},
-            {gate_no: 3, gate_status: "Open", gate_no_opens: 23, gate_no_closes: 22},
-        ];
 
-        var animalData = [
-            {animal_id: 1, animal_type: "Mammal", animal_name: "Tiger", is_endangered: true, is_threat: true, time_stamp: "2025-04-26 12:00:00"},
-            {animal_id: 2, animal_type: "Bird", animal_name: "Parrot", is_endangered: false, is_threat: false, time_stamp: "2025-04-26 13:00:00"},
-            {animal_id: 3, animal_type: "Reptile", animal_name: "Crocodile", is_endangered: false, is_threat: true, time_stamp: "2025-04-26 14:00:00"},
-        ];
-
-        var statsData = [
-            { label: "Total Animals", value: 150 },
-            { label: "Total Threats", value: 45 },
-            { label: "Total Endangered", value: 30 },
-            { label: "Threats & Endangered", value: 18 },
-            { label: "% Threats", value: "30%" },
-            { label: "% Endangered", value: "20%" },
-            { label: "% Both", value: "12%" },
-        ];
-
-
-        // Create Tabulator on DOM element
-        var table = new Tabulator(".gates-table", {
-            data: tableData,
-            layout: "fitData",
-            responsiveLayout: "collapse",
-            columns: [
-                {title: "Gate No", field: "gate_no", width: 180, hozAlign: "center"},
-                {title: "Status", field: "gate_status", width: 192, hozAlign: "center", formatter:"tickCross", formatterParams:{
-                    allowEmpty:true,
-                    allowTruthy:true,
-                    tickElement:"<span>🟢 Open</span>",
-                    crossElement:"<span>🔴 Closed</span>",
-                }},
-                {title: "No. of Opens", field: "gate_no_opens", width: 200, hozAlign: "center"},
-                {title: "No. of Closes", field: "gate_no_closes", width: 200, hozAlign: "center"},
-            ],
-            initialSort: [
-                {column:"gate_no", dir:"asc"}, // Sort gates by gate number
-            ],
-            rowFormatter: function(row) {
-                // Set a more subtle gradient for background (light green to deeper green)
-                row.getElement().style.background = "rgba(0, 0, 0)"; // Black with 70% opacity
-                
-                // Set the text color to white for high contrast and readability
-                row.getElement().style.color = "white"; // White text color
-                
-                // Make the text bold for better visibility
-                row.getElement().style.fontWeight = "bold"; // Bold text for emphasis
-                
-                // Use a smooth transition for background color and shadow change on hover
-                row.getElement().style.transition = "background-color 0.3s ease"; // Smooth transitions
-                
-                // Hover effect: slightly darker green for the background when mouse enters
-                row.getElement().addEventListener('mouseenter', function() {
-                    row.getElement().style.background = "#000000"; // Darker green for hover effect
-                });
-                
-                row.getElement().addEventListener('mouseleave', function() {
-                    row.getElement().style.background = "rgba(0, 0, 0)"; // Revert to original gradient
-                });
-            },
-        });
-
-        // Create Tabulator for animals table
-        var animalTable = new Tabulator(".animals-table", {
-            data: animalData,
-            layout: "fitData",
-            responsiveLayout: "collapse",
-            columns: [
-                {title: "ID", field: "animal_id", width: 100, hozAlign: "center"},
-                {title: "Type", field: "animal_type", width: 120, hozAlign: "center"},
-                {title: "Name", field: "animal_name", width: 120, hozAlign: "center"},
-                {title: "Endangered", field: "is_endangered", hozAlign: "center", formatter: "tickCross", formatterParams: {
-                    allowEmpty: true,
-                    allowTruthy: true,
-                    tickElement: "<span style='color:red;'>⚠️ Yes</span>",
-                    crossElement: "<span style='color:green;'>✅ No</span>",
-                }},
-                {title: "Threat", field: "is_threat", width: 120, hozAlign: "center", formatter: "tickCross", formatterParams: {
-                    allowEmpty: true,
-                    allowTruthy: true,
-                    tickElement: "<span style='color:orange;'>⚡ Threat</span>",
-                    crossElement: "<span style='color:green;'>✅ Safe</span>",
-                }},
-                {title: "Timestamp", field: "time_stamp", width: 200, hozAlign: "center"},
-            ],
-            initialSort: [
-                {column: "animal_id", dir: "asc"},
-            ],
-            rowFormatter: function(row) {
-                // Set a more subtle gradient for background (light green to deeper green)
-                row.getElement().style.background = "rgba(0, 0, 0)"; // Black with 70% opacity
-                
-                // Set the text color to white for high contrast and readability
-                row.getElement().style.color = "white"; // White text color
-                
-                // Make the text bold for better visibility
-                row.getElement().style.fontWeight = "bold"; // Bold text for emphasis
-                
-                // Use a smooth transition for background color and shadow change on hover
-                row.getElement().style.transition = "background-color 0.3s ease"; // Smooth transitions
-                
-                // Hover effect: slightly darker green for the background when mouse enters
-                row.getElement().addEventListener('mouseenter', function() {
-                    row.getElement().style.background = "#000000"; // Darker green for hover effect
-                });
-                
-                row.getElement().addEventListener('mouseleave', function() {
-                    row.getElement().style.background = "rgba(0, 0, 0)"; // Revert to original gradient
-                });
-            },
-        });
-
-        // Create Tabulator for stats table
-        var statsTable = new Tabulator(".stats-table", {
-            data: statsData,
-            layout: "fitData",
-            responsiveLayout: "collapse",
-            columns: [
-                {title: "Stat", field: "label", hozAlign: "left", width: 320},
-                {title: "Value", field: "value", hozAlign: "center", width: 320},
-            ],
-            rowFormatter: function(row) {
-                // Set a more subtle gradient for background (light green to deeper green)
-                row.getElement().style.background = "rgba(0, 0, 0)"; // Black with 70% opacity
-                
-                // Set the text color to white for high contrast and readability
-                row.getElement().style.color = "white"; // White text color
-                
-                // Make the text bold for better visibility
-                row.getElement().style.fontWeight = "bold"; // Bold text for emphasis
-                
-                // Use a smooth transition for background color and shadow change on hover
-                row.getElement().style.transition = "background-color 0.3s ease"; // Smooth transitions
-                
-                // Hover effect: slightly darker green for the background when mouse enters
-                row.getElement().addEventListener('mouseenter', function() {
-                    row.getElement().style.background = "#000000"; // Darker green for hover effect
-                });
-                
-                row.getElement().addEventListener('mouseleave', function() {
-                    row.getElement().style.background = "rgba(0, 0, 0)"; // Revert to original gradient
-                });
-            },
-        });
-
-        var animalTypes = animalData.map(function(animal) {
-            return animal.animal_type;
-        });
-
-        var trace = {
-            x: animalTypes,
-            type: 'histogram',
-            marker: {
-                color: '#17BECF',
-            },
-        };
-
-        var data = [trace];
-
-        var layout = {
-            title: 'Animal Type Distribution',
-            xaxis: { title: 'Animal Type' },
-            yaxis: { title: 'Count' },
-            bargap: 0.2,
-            width: 640,   // Match the CSS width
-            height: 450,  // Match the CSS height
-        };
-
-        Plotly.newPlot('animal-count-histo', data, layout);
-    </script>
-    <style>
-        .table-histo-container {
-            display: flex;
-            flex-direction: row;
-            align-items: start;
-        }
-
-        .histo-stats-container {
-            display: flex;
-            flex-direction: column;
-            align-items: start;
-        }
-
-        .gates-animal-table {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .gates-table, .animals-table {
-            margin-top: 60px;
-            margin-left: 40px;
-            height: auto;
-            display: inline-block;
-        }
-
-        #animal-count-histo{
-            margin: 60px 35px;
-            height: auto;
-            display: inline-block;
-            margin-bottom: 35px;
-        }
-
-        .stats-table {
-            margin: 0px 35px;
-            height: auto;
-            display: inline-block;
-        }
-    </style>
-{% endblock %}
+    <script type="module" src="/static/js/stats.js"></script>
